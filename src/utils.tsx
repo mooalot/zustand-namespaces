@@ -4,7 +4,6 @@ import {
   IncludeByPrefix,
   PrefixObject,
   Slice,
-  UnionToIntersection,
   Utils,
 } from './types';
 import {
@@ -241,3 +240,4 @@ export function createSliceWithOptions<T, Options>() {
   return <Prefix extends string>(callback: () => Slice<Prefix, T, Options>) =>
     callback;
 }
+
