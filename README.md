@@ -3,6 +3,14 @@
 This API provides a modular state management solution using Zustand, offering a structure for managing divisions of state. The API revolves around creating and using different divisions of state, allowing for modular and scalable state management in your application.
 There need only be one store, but it is divided into divisions, each with its own state, actions, and hooks.
 
+## Installation
+
+To install the Zustand Divisions API, you can use npm or yarn:
+
+```bash
+npm install zustand-divisions
+```
+
 ## Example
 
 Here is an example of how you can use the Zustand Divisions API in your application:
