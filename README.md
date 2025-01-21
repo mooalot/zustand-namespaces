@@ -5,7 +5,7 @@ There need only be one store, but it is divided into divisions, each with its ow
 
 ## Installation
 
-To install the Zustand Divisions API, you can use npm or yarn:
+To install the Zustand Divisions API, you can use npm:
 
 ```bash
 npm install zustand-divisions
