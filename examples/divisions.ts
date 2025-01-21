@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Divisions } from '../src/types';
+import { Divide } from '../src/types';
 import { createDivision, divisionHooks, divide } from '../src/utils';
 
 type Division1 = {
@@ -26,7 +26,7 @@ const createDivision2 = createDivision<Division2>()(() => ({
 
 const divisions = [createDivision1(), createDivision2()] as const;
 
-type AppState = Divisions<typeof divisions>;
+type AppState = Divide<typeof divisions>;
 
 const useStore = create<AppState>(
   divide(
