@@ -1,7 +1,7 @@
 export {
   createDivision,
   divisionHooks as divisionHooks,
-  divide as divisionr,
+  divide,
   spreadDivisions,
   stateToDivision,
   divisionToState,

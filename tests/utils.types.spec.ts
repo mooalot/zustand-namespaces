@@ -94,7 +94,7 @@ describe('getUnprefixedObject', () => {
   });
 });
 
-describe('divisionr', () => {
+describe('divide', () => {
   test('should create a state creator with divisions', () => {
     const userDivision: UserDivision = {
       prefix: 'user',

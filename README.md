@@ -42,7 +42,7 @@ const divisions = [createDivision1(), createDivision2()] as const;
 
 type AppState = Divide<typeof divisions>;
 
-const useStore = create<AppState>(divisionr((set, get) => ({}), divisions));
+const useStore = create<AppState>(divide((set, get) => ({}), divisions));
 
 export const [useDivision1, useDivision2] = divisionHooks(
   useStore,
@@ -55,7 +55,7 @@ useStore((state) => state.division2_dataInDivision2);
 useStore.getState;
 useStore.setState;
 
-// useDivision1 and useDivision2 are the hooks for the divisions. They are not prefixed and self contained
+// useDivision1 and useDivision2 are the hooks for the divisions. They are self-contained and do not require prefixes
 useDivision1((state) => state.dataInDivision1);
 useDivision1.getState;
 useDivision1.setState;
@@ -66,4 +66,4 @@ useDivision2.setState;
 
 ## More Examples
 
-You can find more examples in the `examples` directory of this repository. Each example demonstrates a different use case for the Zustand Divisionr API, such as using divisions with 3rd party libraries or using a mix of divisions and global state.
+You can find more examples in the [examples](https://github.com/mooalot/zustand-divisions/tree/main/examples) directory of this repository. Each example demonstrates a different use case for the Zustand Divisions API, such as using divisions with 3rd party libraries or using a mix of divisions and global state.
