@@ -22,10 +22,9 @@ export type SliceToHook<T> = <Q>(selector: (state: T) => Q) => Q;
 export type GetState<T> = StoreApi<T>['getState'];
 export type SetState<T> = StoreApi<T>['setState'];
 
-export type Utils<T> = {
-  hook: SliceToHook<T>;
-  get: GetState<T>;
-  set: SetState<T>;
+export type UseBoundSlice<T> = SliceToHook<T> & {
+  getState: GetState<T>;
+  setState: SetState<T>;
 };
 
 export type Slice<Prefix extends string = string, T = any, Options = {}> = {

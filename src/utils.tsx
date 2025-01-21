@@ -1,10 +1,12 @@
 import {
   ExcludeByPrefix,
   FilterByPrefix,
+  GetState,
   IncludeByPrefix,
   PrefixObject,
+  SetState,
   Slice,
-  Utils,
+  UseBoundSlice,
 } from './types';
 import {
   StateCreator,
@@ -13,7 +15,11 @@ import {
   UseBoundStore,
 } from 'zustand';
 
-function transformStateCreatorArgs<P extends string, State extends Object, T>(
+export function transformStateCreatorArgs<
+  P extends string,
+  State extends Object,
+  T
+>(
   slice: Slice<P, T>,
   ...args: Parameters<StateCreator<State>>
 ): Parameters<StateCreator<FilterByPrefix<P, State>>> {
@@ -91,7 +97,7 @@ function transformStateCreatorArgs<P extends string, State extends Object, T>(
   ];
 }
 
-function getPrefixedObject<T extends string, O>(typePrefix: T, obj: O) {
+export function getPrefixedObject<T extends string, O>(typePrefix: T, obj: O) {
   return Object.entries(obj as Object).reduce((acc, [key, value]) => {
     return {
       ...acc,
@@ -100,7 +106,7 @@ function getPrefixedObject<T extends string, O>(typePrefix: T, obj: O) {
   }, {} as PrefixObject<T, O>);
 }
 
-function getUnprefixedObject<T extends string, Data extends Object>(
+export function getUnprefixedObject<T extends string, Data extends Object>(
   typePrefix: T,
   obj: Data
 ) {
@@ -167,25 +173,24 @@ function spreadSlices<State extends Object, Slices extends readonly Slice[]>(
   return spreadSlicesWithCallback(slices, transformCallback(...args)) as any;
 }
 
-export function createUtilsFromSlice<
-  Prefix extends string,
-  Store extends Object
->(
+export function sliceHook<Prefix extends string, Store extends Object>(
   useStore: UseBoundStore<StoreApi<Store>>,
   slice: Slice<Prefix, FilterByPrefix<Prefix, Store>>
-): Utils<FilterByPrefix<Prefix, Store>> {
+): UseBoundSlice<FilterByPrefix<Prefix, Store>> {
   type T = FilterByPrefix<Prefix, Store>;
-  const hook: Utils<T>['hook'] = (selector) => {
+
+  const hook: UseBoundSlice<T> = ((selector) => {
     return useStore((state) => {
       const unprefixState = getUnprefixedObject(slice.prefix, state);
       return selector(unprefixState);
     });
-  };
-  const get: Utils<T>['get'] = () => {
+  }) as UseBoundSlice<T>;
+
+  const get: GetState<T> = () => {
     const state = useStore.getState();
     return getUnprefixedObject(slice.prefix, state);
   };
-  const set: Utils<T>['set'] = (state) => {
+  const set: SetState<T> = (state) => {
     useStore.setState((currentState) => {
       const unprefixedState = getUnprefixedObject(slice.prefix, currentState);
       const updatedState =
@@ -199,23 +204,22 @@ export function createUtilsFromSlice<
     });
   };
 
-  return {
-    hook,
-    get,
-    set,
-  };
+  hook.getState = get;
+  hook.setState = set;
+
+  return hook;
 }
 
-export function createUtilsFromSlices<
+export function sliceHooks<
   Store extends PrefixObject<string, any>,
   Slices extends readonly Slice[],
   Result = {
     [K in keyof Slices]: Slices[K] extends Slice<string, infer Data>
-      ? Utils<Data>
+      ? UseBoundSlice<Data>
       : never;
   }
 >(useStore: UseBoundStore<StoreApi<Store>>, ...slices: Slices) {
-  return slices.map((slice) => createUtilsFromSlice(useStore, slice)) as Result;
+  return slices.map((slice) => sliceHook(useStore, slice)) as Result;
 }
 
 export function stateToSlice<Prefix extends string, State extends Object>(
@@ -232,12 +236,7 @@ export function sliceToState<Prefix extends string, State extends Object>(
   return getPrefixedObject(slice.prefix, state);
 }
 
-export function createSlice<T>() {
-  return <Prefix extends string>(callback: () => Slice<Prefix, T>) => callback;
-}
-
-export function createSliceWithOptions<T, Options>() {
+export function createSlice<T, Options = {}>() {
   return <Prefix extends string>(callback: () => Slice<Prefix, T, Options>) =>
     callback;
 }
-
