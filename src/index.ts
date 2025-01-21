@@ -1,10 +1,10 @@
 export {
-  createSlice,
-  sliceHooks,
-  slicer,
-  spreadSlices,
-  stateToSlice,
-  sliceToState,
-  sliceHook,
+  createDivision,
+  divisionHooks as divisionHooks,
+  divide as divisionr,
+  spreadDivisions,
+  stateToDivision,
+  divisionToState,
+  divisionHook,
 } from './utils';
-export type { Slices, Slice, UseBoundSlice } from './types';
+export type { Divisions, Division, UseBoundDivision } from './types';

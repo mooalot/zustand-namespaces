@@ -2,12 +2,12 @@ import { describe, it, expect } from 'vitest';
 import {
   getPrefixedObject,
   getUnprefixedObject,
-  spreadSlices,
-  stateToSlice,
-  sliceToState,
-  createSlice,
+  spreadDivisions,
+  stateToDivision,
+  divisionToState,
+  createDivision,
 } from '../src/utils';
-import { Slice } from '../src/types';
+import { Division } from '../src/types';
 
 describe('Utility Functions', () => {
   describe('getPrefixedObject', () => {
@@ -49,34 +49,34 @@ describe('Utility Functions', () => {
     });
   });
 
-  describe('spreadSlicesWithCallback', () => {
-    it('should combine slice results using a callback', () => {
-      const slices: Slice[] = [
-        { prefix: 'slice1', creator: () => {} },
-        { prefix: 'slice2', creator: () => {} },
+  describe('spreadDivisionsWithCallback', () => {
+    it('should combine division results using a callback', () => {
+      const divisions: Division[] = [
+        { prefix: 'division1', creator: () => {} },
+        { prefix: 'division2', creator: () => {} },
       ];
-      const callback = (slice: Slice) => ({
-        [`${slice.prefix}_foo`]: 'bar',
+      const callback = (division: Division) => ({
+        [`${division.prefix}_foo`]: 'bar',
       });
 
-      const result = spreadSlices(slices, callback);
+      const result = spreadDivisions(divisions, callback);
 
       expect(result).toEqual({
-        slice1_foo: 'bar',
-        slice2_foo: 'bar',
+        division1_foo: 'bar',
+        division2_foo: 'bar',
       });
     });
   });
 
-  describe('stateToSlice', () => {
-    it('should extract unprefixed state for a slice', () => {
-      const slice: Slice = {
-        prefix: 'slice1',
+  describe('stateToDivision', () => {
+    it('should extract unprefixed state for a division', () => {
+      const division: Division = {
+        prefix: 'division1',
         creator: () => ({ key1: 'value1' }),
       };
-      const state = { slice1_key1: 'value1', slice2_key2: 'value2' };
+      const state = { division1_key1: 'value1', division2_key2: 'value2' };
 
-      const result = stateToSlice(slice, state);
+      const result = stateToDivision(division, state);
 
       expect(result).toEqual({
         key1: 'value1',
@@ -84,32 +84,32 @@ describe('Utility Functions', () => {
     });
   });
 
-  describe('sliceToState', () => {
-    it('should add a prefix to slice state', () => {
-      const slice: Slice = {
-        prefix: 'slice1',
+  describe('divisionToState', () => {
+    it('should add a prefix to division state', () => {
+      const division: Division = {
+        prefix: 'division1',
         creator: () => ({ key1: 'value1' }),
       };
       const state = { key1: 'value1' };
 
-      const result = sliceToState(slice, state);
+      const result = divisionToState(division, state);
 
       expect(result).toEqual({
-        slice1_key1: 'value1',
+        division1_key1: 'value1',
       });
     });
   });
 
-  describe('createSlice', () => {
-    it('should create a slice definition', () => {
-      const createTestSlice = createSlice<{ key: string }>()(() => ({
+  describe('createDivision', () => {
+    it('should create a division definition', () => {
+      const createTestDivision = createDivision<{ key: string }>()(() => ({
         prefix: 'test',
         creator: () => ({
           key: 'value',
         }),
       }));
 
-      const result = createTestSlice();
+      const result = createTestDivision();
 
       expect(result).toEqual({
         prefix: 'test',

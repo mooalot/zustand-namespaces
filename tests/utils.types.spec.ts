@@ -6,19 +6,19 @@ import {
   transformStateCreatorArgs,
   getPrefixedObject,
   getUnprefixedObject,
-  slicer,
-  sliceHook,
-  sliceHooks,
-  stateToSlice,
-  sliceToState,
-  createSlice,
+  divide,
+  divisionHook,
+  divisionHooks,
+  stateToDivision,
+  divisionToState,
+  createDivision,
 } from '../src/utils';
 import { StoreApi, StateCreator, create } from 'zustand';
 import {
   FilterByPrefix,
   PrefixObject,
-  Slice,
-  UseBoundSlice,
+  Division,
+  UseBoundDivision,
 } from '../src/types';
 
 type State = {
@@ -27,16 +27,16 @@ type State = {
   admin_level: number;
 };
 
-type UserSlice = Slice<'user', FilterByPrefix<'user', State>>;
+type UserDivision = Division<'user', FilterByPrefix<'user', State>>;
 
-type AdminSlice = {
+type AdminDivision = {
   prefix: 'admin';
   creator: StateCreator<FilterByPrefix<'admin', State>>;
 };
 
 describe('transformStateCreatorArgs', () => {
   test('should transform state creator arguments', () => {
-    const mockSlice: UserSlice = {
+    const mockDivision: UserDivision = {
       prefix: 'user',
       creator: () => ({
         name: 'Alice',
@@ -51,13 +51,13 @@ describe('transformStateCreatorArgs', () => {
     ];
 
     const transformedArgs = transformStateCreatorArgs(
-      mockSlice,
+      mockDivision,
       ...originalArgs
     );
 
     expect(transformedArgs).toBeDefined();
     expectType<
-      TypeEqual<typeof transformedArgs, Parameters<typeof mockSlice.creator>>
+      TypeEqual<typeof transformedArgs, Parameters<typeof mockDivision.creator>>
     >(true);
   });
 });
@@ -94,9 +94,9 @@ describe('getUnprefixedObject', () => {
   });
 });
 
-describe('slicer', () => {
-  test('should create a state creator with slices', () => {
-    const userSlice: UserSlice = {
+describe('divisionr', () => {
+  test('should create a state creator with divisions', () => {
+    const userDivision: UserDivision = {
       prefix: 'user',
       creator: () => ({
         name: 'Alice',
@@ -104,14 +104,16 @@ describe('slicer', () => {
       }),
     };
 
-    const adminSlice: AdminSlice = {
+    const adminDivision: AdminDivision = {
       prefix: 'admin',
       creator: () => ({
         level: 1,
       }),
     };
 
-    const combinedCreator = create(slicer(() => ({}), [userSlice, adminSlice]));
+    const combinedCreator = create(
+      divide(() => ({}), [userDivision, adminDivision])
+    );
 
     expectType<
       StateCreator<
@@ -121,9 +123,9 @@ describe('slicer', () => {
   });
 });
 
-describe('sliceHook', () => {
-  test('should create a slice hook', () => {
-    const userSlice: UserSlice = {
+describe('divisionHook', () => {
+  test('should create a division hook', () => {
+    const userDivision: UserDivision = {
       prefix: 'user',
       creator: () => ({
         name: 'Alice',
@@ -132,24 +134,24 @@ describe('sliceHook', () => {
     };
 
     const useStore = create<State>(
-      slicer(
+      divide(
         () => ({
           admin_level: 1,
         }),
-        [userSlice]
+        [userDivision]
       )
     );
 
-    const hook = sliceHook(useStore, userSlice);
+    const hook = divisionHook(useStore, userDivision);
 
     expect(hook).toBeDefined();
-    expectType<UseBoundSlice<FilterByPrefix<'user', State>>>(hook);
+    expectType<UseBoundDivision<FilterByPrefix<'user', State>>>(hook);
   });
 });
 
-describe('sliceHooks', () => {
-  test('should create multiple slice hooks', () => {
-    const userSlice: UserSlice = {
+describe('divisionHooks', () => {
+  test('should create multiple division hooks', () => {
+    const userDivision: UserDivision = {
       prefix: 'user',
       creator: () => ({
         name: 'Alice',
@@ -157,7 +159,7 @@ describe('sliceHooks', () => {
       }),
     };
 
-    const adminSlice: AdminSlice = {
+    const adminDivision: AdminDivision = {
       prefix: 'admin',
       creator: () => ({
         level: 1,
@@ -165,27 +167,31 @@ describe('sliceHooks', () => {
     };
 
     const useStore = create<State>(
-      slicer(
+      divide(
         () => ({
           admin_level: 1,
         }),
-        [userSlice, adminSlice]
+        [userDivision, adminDivision]
       )
     );
 
-    const [useUser, useAdmin] = sliceHooks(useStore, userSlice, adminSlice);
+    const [useUser, useAdmin] = divisionHooks(
+      useStore,
+      userDivision,
+      adminDivision
+    );
 
     expect(useUser).toBeDefined();
     expect(useAdmin).toBeDefined();
 
-    expectType<UseBoundSlice<FilterByPrefix<'user', State>>>(useUser);
-    expectType<UseBoundSlice<FilterByPrefix<'admin', State>>>(useAdmin);
+    expectType<UseBoundDivision<FilterByPrefix<'user', State>>>(useUser);
+    expectType<UseBoundDivision<FilterByPrefix<'admin', State>>>(useAdmin);
   });
 });
 
-describe('stateToSlice', () => {
-  test('should extract slice from state', () => {
-    const userSlice: UserSlice = {
+describe('stateToDivision', () => {
+  test('should extract division from state', () => {
+    const userDivision: UserDivision = {
       prefix: 'user',
       creator: () => ({
         name: 'Alice',
@@ -199,20 +205,20 @@ describe('stateToSlice', () => {
       admin_level: 1,
     };
 
-    const slice = stateToSlice(userSlice, state);
+    const division = stateToDivision(userDivision, state);
 
-    expect(slice).toEqual({
+    expect(division).toEqual({
       name: 'Alice',
       age: 25,
     });
 
-    expectType<FilterByPrefix<'user', State>>(slice);
+    expectType<FilterByPrefix<'user', State>>(division);
   });
 });
 
-describe('sliceToState', () => {
-  test('should add prefix to slice state', () => {
-    const userSlice: UserSlice = {
+describe('divisionToState', () => {
+  test('should add prefix to division state', () => {
+    const userDivision: UserDivision = {
       prefix: 'user',
 
       creator: () => ({
@@ -223,52 +229,53 @@ describe('sliceToState', () => {
 
     const state = { name: 'Alice', age: 25 };
 
-    const slicedState = sliceToState(userSlice, state);
+    const divisiondState = divisionToState(userDivision, state);
 
-    expect(slicedState).toEqual({
+    expect(divisiondState).toEqual({
       user_name: 'Alice',
       user_age: 25,
     });
 
-    expectType<PrefixObject<'user', typeof state>>(slicedState);
+    expectType<PrefixObject<'user', typeof state>>(divisiondState);
   });
 });
 
-describe('createSlice', () => {
-  test('should create a slice definition', () => {
-    const createTestSlice = createSlice<{ key: string }>()(() => ({
+describe('createDivision', () => {
+  test('should create a division definition', () => {
+    const createTestDivision = createDivision<{ key: string }>()(() => ({
       prefix: 'test',
       creator: () => ({
         key: 'value',
       }),
     }));
 
-    const result = createTestSlice();
+    const result = createTestDivision();
 
     expect(result).toBeDefined();
-    expectType<ReturnType<typeof createTestSlice>>(result);
+    expectType<ReturnType<typeof createTestDivision>>(result);
 
     expect(result.prefix).toBe('test');
     expect(result.creator).toBeDefined();
   });
 
-  test('should create a slice definition with options', () => {
-    const createTestSlice = createSlice<{ key: string }, { option: string }>()(
-      () => ({
-        prefix: 'test',
-        creator: () => ({
-          key: 'value',
-        }),
-        options: {
-          option: 'value',
-        },
-      })
-    );
+  test('should create a division definition with options', () => {
+    const createTestDivision = createDivision<
+      { key: string },
+      { option: string }
+    >()(() => ({
+      prefix: 'test',
+      creator: () => ({
+        key: 'value',
+      }),
+      options: {
+        option: 'value',
+      },
+    }));
 
-    const result = createTestSlice();
+    const result = createTestDivision();
 
     expect(result).toBeDefined();
-    expectType<ReturnType<typeof createTestSlice>>(result);
+    expectType<ReturnType<typeof createTestDivision>>(result);
 
     expect(result.prefix).toBe('test');
     expect(result.creator).toBeDefined();

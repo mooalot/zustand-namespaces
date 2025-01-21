@@ -5,8 +5,8 @@ import {
   IncludeByPrefix,
   PrefixObject,
   SetState,
-  Slice,
-  UseBoundSlice,
+  Division,
+  UseBoundDivision,
 } from './types';
 import {
   StateCreator,
@@ -20,7 +20,7 @@ export function transformStateCreatorArgs<
   State extends object,
   T
 >(
-  slice: Slice<P, T>,
+  division: Division<P, T>,
   ...args: Parameters<StateCreator<State>>
 ): Parameters<StateCreator<FilterByPrefix<P, State>>> {
   type O = FilterByPrefix<P, State>;
@@ -33,7 +33,7 @@ export function transformStateCreatorArgs<
       if (typeof state === 'function') {
         setState((currentState) => {
           const unprefixedState = getUnprefixedObject(
-            slice.prefix,
+            division.prefix,
             currentState
           );
           const updatedState = state(unprefixedState);
@@ -46,25 +46,25 @@ export function transformStateCreatorArgs<
         setState(
           {
             ...getState(),
-            ...getPrefixedObject(slice.prefix, state),
+            ...getPrefixedObject(division.prefix, state),
           },
           replace
         );
       }
     },
     getState: () => {
-      return getUnprefixedObject(slice.prefix, getState());
+      return getUnprefixedObject(division.prefix, getState());
     },
     subscribe: (listener) => {
       return subscribe((newPrefixedState, oldPrefixedState) => {
         listener(
-          getUnprefixedObject(slice.prefix, newPrefixedState),
-          getUnprefixedObject(slice.prefix, oldPrefixedState)
+          getUnprefixedObject(division.prefix, newPrefixedState),
+          getUnprefixedObject(division.prefix, oldPrefixedState)
         );
       });
     },
     getInitialState: () => {
-      return getUnprefixedObject(slice.prefix, getInitialState());
+      return getUnprefixedObject(division.prefix, getInitialState());
     },
     destroy,
   };
@@ -73,25 +73,25 @@ export function transformStateCreatorArgs<
     (set, replace) => {
       if (typeof set === 'function') {
         originalSet((state) => {
-          const unprefixedState = getUnprefixedObject(slice.prefix, state);
+          const unprefixedState = getUnprefixedObject(division.prefix, state);
           const updatedState = set(unprefixedState);
           return {
             ...state,
-            ...getPrefixedObject(slice.prefix, updatedState),
+            ...getPrefixedObject(division.prefix, updatedState),
           };
         });
       } else {
         originalSet(
           {
             ...get(),
-            ...getPrefixedObject(slice.prefix, set),
+            ...getPrefixedObject(division.prefix, set),
           },
           replace
         );
       }
     },
     () => {
-      return getUnprefixedObject(slice.prefix, get());
+      return getUnprefixedObject(division.prefix, get());
     },
     newApi,
   ];
@@ -124,21 +124,24 @@ export function getUnprefixedObject<T extends string, Data extends object>(
   }, {} as FilterByPrefix<T, Data>);
 }
 
-export function spreadSlices<Slices extends readonly Slice[], Data>(
-  slices: Slices,
-  callback: (slice: Slices[number]) => Data
+export function spreadDivisions<Divisions extends readonly Division[], Data>(
+  divisions: Divisions,
+  callback: (division: Divisions[number]) => Data
 ) {
-  return slices.reduce((acc, slice) => {
+  return divisions.reduce((acc, division) => {
     return {
       ...acc,
-      ...callback(slice),
+      ...callback(division),
     };
   }, {} as Data);
 }
 
-export function slicer<
+/**
+ * Note: Type inference doesnt work yet for this function. It would be best practice to pass in a type to the zustand 'create' function
+ */
+export function divide<
   T extends object,
-  Slices extends readonly Slice[],
+  Divisions extends readonly Division[],
   Mis extends [StoreMutatorIdentifier, unknown][] = [],
   Mos extends [StoreMutatorIdentifier, unknown][] = []
 >(
@@ -146,13 +149,13 @@ export function slicer<
     T,
     Mis,
     Mos,
-    ExcludeByPrefix<Slices[number]['prefix'], T>
+    ExcludeByPrefix<Divisions[number]['prefix'], T>
   >,
-  slices: Slices
+  divisions: Divisions
 ): StateCreator<T, Mis, Mos, T> {
   return (...args) => {
     return {
-      ...spreadTransformedSlices(slices, ...args),
+      ...spreadTransformedDivisions(divisions, ...args),
       ...creator(...args),
     } as T;
   };
@@ -162,51 +165,54 @@ function transformCallback<State extends object>(
   ...args: Parameters<StateCreator<State>>
 ) {
   return function <P extends string>(
-    slice: Slice<P, FilterByPrefix<P, State>>
+    division: Division<P, FilterByPrefix<P, State>>
   ) {
-    const newArgs = transformStateCreatorArgs(slice, ...args);
-    return getPrefixedObject(slice.prefix, slice.creator(...newArgs));
+    const newArgs = transformStateCreatorArgs(division, ...args);
+    return getPrefixedObject(division.prefix, division.creator(...newArgs));
   };
 }
 
-function spreadTransformedSlices<
+function spreadTransformedDivisions<
   State extends object,
-  Slices extends readonly Slice[]
+  Divisions extends readonly Division[]
 >(
-  slices: Slices,
+  divisions: Divisions,
   ...args: Parameters<StateCreator<State>>
-): IncludeByPrefix<Slices[number]['prefix'], State> {
+): IncludeByPrefix<Divisions[number]['prefix'], State> {
   // eslint-disable-next-line
-  return spreadSlices(slices, transformCallback(...args)) as any;
+  return spreadDivisions(divisions, transformCallback(...args)) as any;
 }
 
-export function sliceHook<Prefix extends string, Store extends object>(
+export function divisionHook<Prefix extends string, Store extends object>(
   useStore: UseBoundStore<StoreApi<Store>>,
-  slice: Slice<Prefix, FilterByPrefix<Prefix, Store>>
-): UseBoundSlice<FilterByPrefix<Prefix, Store>> {
+  division: Division<Prefix, FilterByPrefix<Prefix, Store>>
+): UseBoundDivision<FilterByPrefix<Prefix, Store>> {
   type T = FilterByPrefix<Prefix, Store>;
 
-  const hook: UseBoundSlice<T> = ((selector) => {
+  const hook: UseBoundDivision<T> = ((selector) => {
     return useStore((state) => {
-      const unprefixState = getUnprefixedObject(slice.prefix, state);
+      const unprefixState = getUnprefixedObject(division.prefix, state);
       return selector(unprefixState);
     });
-  }) as UseBoundSlice<T>;
+  }) as UseBoundDivision<T>;
 
   const get: GetState<T> = () => {
     const state = useStore.getState();
-    return getUnprefixedObject(slice.prefix, state);
+    return getUnprefixedObject(division.prefix, state);
   };
   const set: SetState<T> = (state) => {
     useStore.setState((currentState) => {
-      const unprefixedState = getUnprefixedObject(slice.prefix, currentState);
+      const unprefixedState = getUnprefixedObject(
+        division.prefix,
+        currentState
+      );
       const updatedState =
         typeof state === 'function'
           ? (state as (s: T) => T | Partial<T>)(unprefixedState)
           : state;
       return {
         ...currentState,
-        ...getPrefixedObject(slice.prefix, updatedState),
+        ...getPrefixedObject(division.prefix, updatedState),
       };
     });
   };
@@ -217,33 +223,36 @@ export function sliceHook<Prefix extends string, Store extends object>(
   return hook;
 }
 
-export function sliceHooks<
+export function divisionHooks<
   Store extends object,
-  Slices extends readonly Slice[],
+  Divisions extends readonly Division[],
   Result = {
-    [K in keyof Slices]: Slices[K] extends Slice<string, infer Data>
-      ? UseBoundSlice<Data>
+    [K in keyof Divisions]: Divisions[K] extends Division<string, infer Data>
+      ? UseBoundDivision<Data>
       : never;
   }
->(useStore: UseBoundStore<StoreApi<Store>>, ...slices: Slices) {
-  return slices.map((slice) => sliceHook(useStore, slice)) as Result;
+>(useStore: UseBoundStore<StoreApi<Store>>, ...divisions: Divisions) {
+  return divisions.map((division) =>
+    divisionHook(useStore, division)
+  ) as Result;
 }
 
-export function stateToSlice<Prefix extends string, State extends object>(
-  slice: Slice<Prefix>,
+export function stateToDivision<Prefix extends string, State extends object>(
+  division: Division<Prefix>,
   state: State
 ) {
-  return getUnprefixedObject(slice.prefix, state);
+  return getUnprefixedObject(division.prefix, state);
 }
 
-export function sliceToState<Prefix extends string, State extends object>(
-  slice: Slice<Prefix>,
+export function divisionToState<Prefix extends string, State extends object>(
+  division: Division<Prefix>,
   state: State
 ) {
-  return getPrefixedObject(slice.prefix, state);
+  return getPrefixedObject(division.prefix, state);
 }
 
-export function createSlice<T, Options = unknown>() {
-  return <Prefix extends string>(callback: () => Slice<Prefix, T, Options>) =>
-    callback;
+export function createDivision<T, Options = unknown>() {
+  return <Prefix extends string>(
+    callback: () => Division<Prefix, T, Options>
+  ) => callback;
 }
