@@ -3,8 +3,9 @@ import React from 'react';
 import { create } from 'zustand';
 import { cleanup, render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
+import '@testing-library/jest-dom';
 import { createDivision, divisionHooks, divide } from '../src/utils';
-import { Divisions } from '../src/types';
+import { Divide } from '../src/types';
 
 type Division1 = {
   dataInDivision1: string;
@@ -40,7 +41,7 @@ const createDivision2 = createDivision<Division2>()(() => ({
 }));
 
 const divisions = [createDivision1(), createDivision2()] as const;
-type AppState = Divisions<typeof divisions>;
+type AppState = Divide<typeof divisions>;
 
 // Create zustand store
 const useStore = create<AppState>(divide(() => ({}), divisions));
