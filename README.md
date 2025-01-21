@@ -9,7 +9,12 @@ Here is an example of how you can use the Zustand Divisions API in your applicat
 
 ```typescript
 import { create } from 'zustand';
-import { Divide, createDivision, divideHooks, divide } from 'zustand-divisions';
+import {
+  Divide,
+  createDivision,
+  divisionHooks,
+  divide,
+} from 'zustand-divisions';
 
 type Division1 = {
   dataInDivision1: string;
@@ -35,7 +40,7 @@ const createDivision2 = createDivision<Division2>()(() => ({
 
 const divisions = [createDivision1(), createDivision2()] as const;
 
-type AppState = Divisions<typeof divisions>;
+type AppState = Divide<typeof divisions>;
 
 const useStore = create<AppState>(divisionr((set, get) => ({}), divisions));
 

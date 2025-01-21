@@ -7,4 +7,4 @@ export {
   divisionToState,
   divisionHook,
 } from './utils';
-export type { Divisions, Division, UseBoundDivision } from './types';
+export type { Divide, Division, UseBoundDivision } from './types';

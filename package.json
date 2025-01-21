@@ -2,6 +2,10 @@
   "name": "zustand-divisions",
   "version": "0.1.0",
   "author": "Gabriel Saunders",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mooalot/zustand-divisions"
+  },
   "type": "module",
   "main": "./dist/index.umd.js",
   "module": "./dist/index.es.js",
@@ -14,6 +18,12 @@
   },
   "files": [
     "dist"
+  ],
+  "keywords": [
+    "react",
+    "zustand",
+    "divisions",
+    "slices"
   ],
   "scripts": {
     "dev": "vite",
@@ -50,5 +60,6 @@
   "peerDependencies": {
     "react": ">=18.0.0",
     "zustand": ">=4.0.0"
-  }
+  },
+  "license": "MIT"
 }

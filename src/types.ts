@@ -9,7 +9,7 @@ export type UnionToIntersection<U> = // eslint-disable-next-line
     ? I
     : never;
 
-export type Divisions<T extends readonly Division[]> = UnionToIntersection<
+export type Divide<T extends readonly Division[]> = UnionToIntersection<
   ExtractPrefixedDivisionType<T[number]>
 >;
 
