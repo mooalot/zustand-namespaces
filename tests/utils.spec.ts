@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   getPrefixedObject,
   getUnprefixedObject,
-  spreadSlicesWithCallback,
+  spreadSlices,
   stateToSlice,
   sliceToState,
   createSlice,
@@ -59,7 +59,7 @@ describe('Utility Functions', () => {
         [`${slice.prefix}_foo`]: 'bar',
       });
 
-      const result = spreadSlicesWithCallback(slices, callback);
+      const result = spreadSlices(slices, callback);
 
       expect(result).toEqual({
         slice1_foo: 'bar',

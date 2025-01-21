@@ -38,14 +38,14 @@ describe('transformStateCreatorArgs', () => {
   test('should transform state creator arguments', () => {
     const mockSlice: UserSlice = {
       prefix: 'user',
-      creator: (set, get) => ({
+      creator: () => ({
         name: 'Alice',
         age: 25,
       }),
     };
 
     const originalArgs: Parameters<StateCreator<State>> = [
-      (fn) => {},
+      () => {},
       () => ({} as State),
       {} as StoreApi<State>,
     ];
@@ -98,7 +98,7 @@ describe('slicer', () => {
   test('should create a state creator with slices', () => {
     const userSlice: UserSlice = {
       prefix: 'user',
-      creator: (set, get) => ({
+      creator: () => ({
         name: 'Alice',
         age: 25,
       }),
@@ -106,14 +106,12 @@ describe('slicer', () => {
 
     const adminSlice: AdminSlice = {
       prefix: 'admin',
-      creator: (set, get) => ({
+      creator: () => ({
         level: 1,
       }),
     };
 
-    const combinedCreator = create(
-      slicer((set, get) => ({}), [userSlice, adminSlice])
-    );
+    const combinedCreator = create(slicer(() => ({}), [userSlice, adminSlice]));
 
     expectType<
       StateCreator<
@@ -127,7 +125,7 @@ describe('sliceHook', () => {
   test('should create a slice hook', () => {
     const userSlice: UserSlice = {
       prefix: 'user',
-      creator: (set, get) => ({
+      creator: () => ({
         name: 'Alice',
         age: 25,
       }),
@@ -135,7 +133,7 @@ describe('sliceHook', () => {
 
     const useStore = create<State>(
       slicer(
-        (set, get) => ({
+        () => ({
           admin_level: 1,
         }),
         [userSlice]
@@ -153,7 +151,7 @@ describe('sliceHooks', () => {
   test('should create multiple slice hooks', () => {
     const userSlice: UserSlice = {
       prefix: 'user',
-      creator: (set, get) => ({
+      creator: () => ({
         name: 'Alice',
         age: 25,
       }),
@@ -161,14 +159,14 @@ describe('sliceHooks', () => {
 
     const adminSlice: AdminSlice = {
       prefix: 'admin',
-      creator: (set, get) => ({
+      creator: () => ({
         level: 1,
       }),
     };
 
     const useStore = create<State>(
       slicer(
-        (set, get) => ({
+        () => ({
           admin_level: 1,
         }),
         [userSlice, adminSlice]
@@ -189,7 +187,7 @@ describe('stateToSlice', () => {
   test('should extract slice from state', () => {
     const userSlice: UserSlice = {
       prefix: 'user',
-      creator: (set, get) => ({
+      creator: () => ({
         name: 'Alice',
         age: 25,
       }),
@@ -217,7 +215,7 @@ describe('sliceToState', () => {
     const userSlice: UserSlice = {
       prefix: 'user',
 
-      creator: (set, get) => ({
+      creator: () => ({
         name: 'Alice',
         age: 25,
       }),

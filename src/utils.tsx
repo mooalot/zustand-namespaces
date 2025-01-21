@@ -17,7 +17,7 @@ import {
 
 export function transformStateCreatorArgs<
   P extends string,
-  State extends Object,
+  State extends object,
   T
 >(
   slice: Slice<P, T>,
@@ -97,8 +97,11 @@ export function transformStateCreatorArgs<
   ];
 }
 
-export function getPrefixedObject<T extends string, O>(typePrefix: T, obj: O) {
-  return Object.entries(obj as Object).reduce((acc, [key, value]) => {
+export function getPrefixedObject<T extends string, O extends object>(
+  typePrefix: T,
+  obj: O
+) {
+  return Object.entries(obj).reduce((acc, [key, value]) => {
     return {
       ...acc,
       [`${typePrefix}_${key}`]: value,
@@ -106,7 +109,7 @@ export function getPrefixedObject<T extends string, O>(typePrefix: T, obj: O) {
   }, {} as PrefixObject<T, O>);
 }
 
-export function getUnprefixedObject<T extends string, Data extends Object>(
+export function getUnprefixedObject<T extends string, Data extends object>(
   typePrefix: T,
   obj: Data
 ) {
@@ -121,7 +124,7 @@ export function getUnprefixedObject<T extends string, Data extends Object>(
   }, {} as FilterByPrefix<T, Data>);
 }
 
-export function spreadSlicesWithCallback<Slices extends readonly Slice[], Data>(
+export function spreadSlices<Slices extends readonly Slice[], Data>(
   slices: Slices,
   callback: (slice: Slices[number]) => Data
 ) {
@@ -133,19 +136,8 @@ export function spreadSlicesWithCallback<Slices extends readonly Slice[], Data>(
   }, {} as Data);
 }
 
-function transformCallback<State extends Object>(
-  ...args: Parameters<StateCreator<State>>
-) {
-  return function <P extends string>(
-    slice: Slice<P, FilterByPrefix<P, State>>
-  ) {
-    const newArgs = transformStateCreatorArgs(slice, ...args);
-    return getPrefixedObject(slice.prefix, slice.creator(...newArgs));
-  };
-}
-
 export function slicer<
-  T extends Object,
+  T extends object,
   Slices extends readonly Slice[],
   Mis extends [StoreMutatorIdentifier, unknown][] = [],
   Mos extends [StoreMutatorIdentifier, unknown][] = []
@@ -160,20 +152,35 @@ export function slicer<
 ): StateCreator<T, Mis, Mos, T> {
   return (...args) => {
     return {
-      ...spreadSlices(slices, ...args),
+      ...spreadTransformedSlices(slices, ...args),
       ...creator(...args),
     } as T;
   };
 }
 
-function spreadSlices<State extends Object, Slices extends readonly Slice[]>(
+function transformCallback<State extends object>(
+  ...args: Parameters<StateCreator<State>>
+) {
+  return function <P extends string>(
+    slice: Slice<P, FilterByPrefix<P, State>>
+  ) {
+    const newArgs = transformStateCreatorArgs(slice, ...args);
+    return getPrefixedObject(slice.prefix, slice.creator(...newArgs));
+  };
+}
+
+function spreadTransformedSlices<
+  State extends object,
+  Slices extends readonly Slice[]
+>(
   slices: Slices,
   ...args: Parameters<StateCreator<State>>
 ): IncludeByPrefix<Slices[number]['prefix'], State> {
-  return spreadSlicesWithCallback(slices, transformCallback(...args)) as any;
+  // eslint-disable-next-line
+  return spreadSlices(slices, transformCallback(...args)) as any;
 }
 
-export function sliceHook<Prefix extends string, Store extends Object>(
+export function sliceHook<Prefix extends string, Store extends object>(
   useStore: UseBoundStore<StoreApi<Store>>,
   slice: Slice<Prefix, FilterByPrefix<Prefix, Store>>
 ): UseBoundSlice<FilterByPrefix<Prefix, Store>> {
@@ -211,7 +218,7 @@ export function sliceHook<Prefix extends string, Store extends Object>(
 }
 
 export function sliceHooks<
-  Store extends PrefixObject<string, any>,
+  Store extends object,
   Slices extends readonly Slice[],
   Result = {
     [K in keyof Slices]: Slices[K] extends Slice<string, infer Data>
@@ -222,21 +229,21 @@ export function sliceHooks<
   return slices.map((slice) => sliceHook(useStore, slice)) as Result;
 }
 
-export function stateToSlice<Prefix extends string, State extends Object>(
+export function stateToSlice<Prefix extends string, State extends object>(
   slice: Slice<Prefix>,
   state: State
 ) {
   return getUnprefixedObject(slice.prefix, state);
 }
 
-export function sliceToState<Prefix extends string, State extends Object>(
+export function sliceToState<Prefix extends string, State extends object>(
   slice: Slice<Prefix>,
   state: State
 ) {
   return getPrefixedObject(slice.prefix, state);
 }
 
-export function createSlice<T, Options = {}>() {
+export function createSlice<T, Options = unknown>() {
   return <Prefix extends string>(callback: () => Slice<Prefix, T, Options>) =>
     callback;
 }

@@ -1,51 +1,61 @@
-# React + TypeScript + Vite
+# Zustand Slicer API Documentation
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This API provides a modular state management solution using Zustand, offering a structure for managing slices of state. The API revolves around creating and using different slices of state, allowing for modular and scalable state management in your application.
+There need only be one store, but it is divided into slices, each with its own state, actions, and hooks.
 
-Currently, two official plugins are available:
+## Example
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Here is an example of how you can use the Zustand Slicer API in your application:
 
-## Expanding the ESLint configuration
+```typescript
+import { create } from 'zustand';
+import { Slices, createSlice, sliceHooks, slicer } from 'zustand-slicer';
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+type Slice1 = {
+  dataInSlice1: string;
+};
 
-- Configure the top-level `parserOptions` property like this:
+type Slice2 = {
+  dataInSlice2: string;
+};
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+const createSlice1 = createSlice<Slice1>()(() => ({
+  prefix: 'slice1',
+  creator: () => ({
+    dataInSlice1: 'data',
+  }),
+}));
+
+const createSlice2 = createSlice<Slice2>()(() => ({
+  prefix: 'slice2',
+  creator: () => ({
+    dataInSlice2: 'data',
+  }),
+}));
+
+const slices = [createSlice1(), createSlice2()] as const;
+
+type AppState = Slices<typeof slices>;
+
+const useStore = create<AppState>(slicer((set, get) => ({}), slices));
+
+export const [useSlice1, useSlice2] = sliceHooks(useStore, ...slices);
+
+// useStore has all the slices, but they are prefixed
+useStore((state) => state.slice1_dataInSlice1);
+useStore((state) => state.slice2_dataInSlice2);
+useStore.getState;
+useStore.setState;
+
+// useSlice1 and useSlice2 are the hooks for the slices. They are not prefixed and self contained
+useSlice1((state) => state.dataInSlice1);
+useSlice1.getState;
+useSlice1.setState;
+useSlice2((state) => state.dataInSlice2);
+useSlice2.getState;
+useSlice2.setState;
 ```
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+## More Examples
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
-
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
-# zustand-slicer
+You can find more examples in the `examples` directory of this repository. Each example demonstrates a different use case for the Zustand Slicer API, such as using slices with 3rd party libraries or using a mix of slices and global state.

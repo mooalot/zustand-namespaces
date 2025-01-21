@@ -41,7 +41,7 @@ const slices = [createSlice1(), createSlice2()] as const;
 type AppState = Slices<typeof slices>;
 
 // Create zustand store
-const useStore = create<AppState>(slicer((set, get) => ({}), slices));
+const useStore = create<AppState>(slicer(() => ({}), slices));
 
 // Create utils for slices
 const [useSlice1, useSlice2] = sliceHooks(useStore, ...slices);

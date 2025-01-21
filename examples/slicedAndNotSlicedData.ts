@@ -33,7 +33,7 @@ type AppState = Slices<typeof slices> & NotSlicedData;
 
 const useStore = create<AppState>(
   slicer(
-    (set, get) => ({
+    () => ({
       foo: 'bar',
     }),
     slices
@@ -42,16 +42,14 @@ const useStore = create<AppState>(
 
 export const [useSlice1, useSlice2] = sliceHooks(useStore, ...slices);
 
-// useStore has all the slices, but they are prefixed
-useStore((state) => state.slice1_dataInSlice1);
-useStore((state) => state.slice2_dataInSlice2);
-useStore.getState;
-useStore.setState;
+// useStore((state) => state.slice1_dataInSlice1);
+// useStore((state) => state.slice2_dataInSlice2);
+// useStore.getState;
+// useStore.setState;
 
-// useSlice1 and useSlice2 are the hooks for the slices. They are not prefixed and self contained
-useSlice1((state) => state.dataInSlice1);
-useSlice1.getState;
-useSlice1.setState;
-useSlice2((state) => state.dataInSlice2);
-useSlice2.getState;
-useSlice2.setState;
+// useSlice1((state) => state.dataInSlice1);
+// useSlice1.getState;
+// useSlice1.setState;
+// useSlice2((state) => state.dataInSlice2);
+// useSlice2.getState;
+// useSlice2.setState;
