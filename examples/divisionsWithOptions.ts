@@ -4,14 +4,12 @@ import {
   createDivision,
   divisionHooks,
   divide,
-  divisionToState,
-  spreadDivisions,
-  stateToDivision,
+  partializeDivisions,
 } from '../src/utils';
-import { temporal } from 'zundo';
+import { temporal, ZundoOptions } from 'zundo';
 
 type CustomOptions<T> = {
-  partialized?: (state: T) => Partial<T>;
+  partialized?: ZundoOptions<T, Partial<T>>['partialize'];
 };
 
 type Division1 = {
@@ -53,11 +51,11 @@ type AppState = Divide<typeof divisions>;
 const useStore = create<AppState>()(
   temporal(divide(divisions), {
     partialize: (state) => {
-      return spreadDivisions(divisions, (division) => {
-        const divisiondData = stateToDivision(division, state);
-        const partializedData = division.options?.partialized?.(divisiondData);
-        return divisionToState(division, partializedData ?? {});
-      });
+      return partializeDivisions(
+        state,
+        divisions,
+        (division) => division.options?.partialized
+      );
     },
   })
 );
