@@ -35,14 +35,14 @@ export const [useDivision1, useDivision2] = divisionHooks(
   ...divisions
 );
 
-useStore((state) => state.division1_dataInDivision1);
-useStore((state) => state.division2_dataInDivision2);
-useStore.getState;
-useStore.setState;
+// useStore((state) => state.division1_dataInDivision1);
+// useStore((state) => state.division2_dataInDivision2);
+// useStore.getState;
+// useStore.setState;
 
-useDivision1((state) => state.dataInDivision1);
-useDivision1.getState;
-useDivision1.setState;
-useDivision2((state) => state.dataInDivision2);
-useDivision2.getState;
-useDivision2.setState;
+// useDivision1((state) => state.dataInDivision1);
+// useDivision1.getState;
+// useDivision1.setState;
+// useDivision2((state) => state.dataInDivision2);
+// useDivision2.getState;
+// useDivision2.setState;

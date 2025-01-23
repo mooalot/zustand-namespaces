@@ -6,8 +6,11 @@ import {
   stateToDivision,
   divisionToState,
   createDivision,
+  divide,
+  partializeDivision,
+  partializeDivisions,
 } from '../src/utils';
-import { Division } from '../src/types';
+import { Divide, Division } from '../src/types';
 
 describe('Utility Functions', () => {
   describe('getPrefixedObject', () => {
@@ -115,6 +118,103 @@ describe('Utility Functions', () => {
         prefix: 'test',
         creator: expect.any(Function),
       });
+    });
+  });
+
+  it('do crazy options', () => {
+    type SubDivision = {
+      one: string;
+      two: string;
+    };
+
+    type CustomOptions<T> = {
+      partialized?: (state: T) => Partial<T>;
+    };
+
+    const createSubDivision = createDivision<
+      SubDivision,
+      CustomOptions<SubDivision>
+    >()(() => ({
+      prefix: 'subDivision1',
+      creator: () => ({
+        one: 'one',
+        two: 'two',
+      }),
+      options: {
+        partialized: (state) => ({
+          one: state.one,
+        }),
+      },
+    }));
+
+    const subDivisions = [createSubDivision()] as const;
+
+    type Division = {
+      one: string;
+      two: string;
+    } & Divide<typeof subDivisions>;
+
+    const createDiv = createDivision<Division, CustomOptions<Division>>()(
+      () => ({
+        prefix: 'division1',
+        creator: divide(
+          () => ({
+            one: 'one',
+            two: 'two',
+          }),
+          subDivisions
+        ),
+        options: {
+          partialized: (state) => ({
+            dataInDivision1: state.two,
+            ...spreadDivisions(subDivisions, (subDivision) => {
+              const divisiondData = stateToDivision(subDivision, state);
+              const partializedData =
+                subDivision.options?.partialized?.(divisiondData);
+              return divisionToState(subDivision, partializedData ?? {});
+            }),
+          }),
+        },
+      })
+    );
+
+    const divisions = [createDiv()] as const;
+
+    const state: Divide<typeof divisions> = {
+      division1_one: 'one',
+      division1_two: 'two',
+      division1_subDivision1_one: 'one',
+      division1_subDivision1_two: 'two',
+    };
+
+    const spread = spreadDivisions(divisions, (division) => {
+      const divisionData = stateToDivision(division, state);
+      const partializedData = division.options?.partialized?.(divisionData);
+      return divisionToState(division, partializedData ?? {});
+    });
+
+    expect(spread).toEqual({
+      division1_dataInDivision1: 'two',
+      division1_subDivision1_one: 'one',
+    });
+
+    const partializedDivision = spreadDivisions(
+      divisions,
+      partializeDivision(state, (division) => division.options?.partialized)
+    );
+    expect(partializedDivision).toEqual({
+      division1_dataInDivision1: 'two',
+      division1_subDivision1_one: 'one',
+    });
+
+    const partializedDivisions = partializeDivisions(
+      state,
+      divisions,
+      (division) => division.options?.partialized
+    );
+    expect(partializedDivisions).toEqual({
+      division1_dataInDivision1: 'two',
+      division1_subDivision1_one: 'one',
     });
   });
 });

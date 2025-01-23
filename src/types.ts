@@ -21,11 +21,6 @@ export type DivisionHook<T> = <Q>(selector: (state: T) => Q) => Q;
 export type GetState<T> = StoreApi<T>['getState'];
 export type SetState<T> = StoreApi<T>['setState'];
 
-export type UseBoundDivision<T> = DivisionHook<T> & {
-  getState: GetState<T>;
-  setState: SetState<T>;
-};
-
 export type Division<
   Prefix extends string = string,
   // eslint-disable-next-line

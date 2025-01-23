@@ -1,10 +1,12 @@
 export {
   createDivision,
-  divisionHooks as divisionHooks,
+  divisionHooks,
   divide,
   spreadDivisions,
   stateToDivision,
   divisionToState,
   divisionHook,
+  partializeDivision,
+  partializeDivisions,
 } from './utils';
-export type { Divide, Division, UseBoundDivision } from './types';
+export type { Divide, Division } from './types';

@@ -6,7 +6,6 @@ import {
   PrefixObject,
   SetState,
   Division,
-  UseBoundDivision,
 } from './types';
 import {
   StateCreator,
@@ -124,6 +123,13 @@ export function getUnprefixedObject<T extends string, Data extends object>(
   }, {} as FilterByPrefix<T, Data>);
 }
 
+/**
+ * Method used to spread division data into a parent state.
+ * @param divisions The divisions
+ * @param callback A callback that returns the division data
+ * @returns The combined division data
+ * @example
+ */
 export function spreadDivisions<Divisions extends readonly Division[], Data>(
   divisions: Divisions,
   callback: (division: Divisions[number]) => Data
@@ -137,7 +143,16 @@ export function spreadDivisions<Divisions extends readonly Division[], Data>(
 }
 
 /**
- * Note: Type inference doesnt work yet for this function. It would be best practice to pass in a type to the zustand 'create' function
+ * Method used to divide divisions into a parent creator method.
+ * @param creator The parent creator method
+ * @param divisions The divisions
+ * @returns A new creator method that includes the divisions
+ * @example
+ * const createDivision1 = create<Divide<typeof [divisions1]>>()(
+ *  divide(() => ({}), [divisions1])
+ * );
+ *
+ * @note Type inference doesnt work yet for this function. It would be best practice to pass in a type to the zustand 'create' function
  */
 export function divide<
   T extends object,
@@ -183,18 +198,28 @@ function spreadTransformedDivisions<
   return spreadDivisions(divisions, transformCallback(...args)) as any;
 }
 
+/**
+ * Helper method for creating a division hook.
+ * @param useStore The parent store hook
+ * @param division The division
+ * @returns A division hook
+ * @note The store passed into this method could be another division hook if you want to create nested division hooks
+ * @example
+ * const useDivision = divisionHook(useStore, division);
+ * const useSubDivision = divisionHook(useDivision, subDivision);
+ */
 export function divisionHook<Prefix extends string, Store extends object>(
   useStore: UseBoundStore<StoreApi<Store>>,
   division: Division<Prefix, FilterByPrefix<Prefix, Store>>
-): UseBoundDivision<FilterByPrefix<Prefix, Store>> {
+): UseBoundStore<StoreApi<FilterByPrefix<Prefix, Store>>> {
   type T = FilterByPrefix<Prefix, Store>;
 
-  const hook: UseBoundDivision<T> = ((selector) => {
+  const hook: UseBoundStore<StoreApi<T>> = ((selector) => {
     return useStore((state) => {
       const unprefixState = getUnprefixedObject(division.prefix, state);
       return selector(unprefixState);
     });
-  }) as UseBoundDivision<T>;
+  }) as UseBoundStore<StoreApi<T>>;
 
   const get: GetState<T> = () => {
     const state = useStore.getState();
@@ -223,12 +248,22 @@ export function divisionHook<Prefix extends string, Store extends object>(
   return hook;
 }
 
+/**
+ * Helper method for creating multiple division hooks.
+ * @param useStore The parent store hook
+ * @param divisions The divisions
+ * @returns An array of division hooks
+ * @note The store passed into this method could be another division hook if you want to create nested division hooks
+ * @example
+ * const [useDivision1, useDivision2] = divisionHooks(useStore, ...divisions);
+ * const [useSubDivision1] = divisionHooks(useDivision1, ...subDivisions);
+ */
 export function divisionHooks<
   Store extends object,
   Divisions extends readonly Division[],
   Result = {
     [K in keyof Divisions]: Divisions[K] extends Division<string, infer Data>
-      ? UseBoundDivision<Data>
+      ? UseBoundStore<StoreApi<Data>>
       : never;
   }
 >(useStore: UseBoundStore<StoreApi<Store>>, ...divisions: Divisions) {
@@ -237,6 +272,12 @@ export function divisionHooks<
   ) as Result;
 }
 
+/**
+ * Helper method for going from a division to a state (usually parent state).
+ * @param division A division
+ * @param state The state of the store
+ * @returns The division state
+ */
 export function stateToDivision<Prefix extends string, State extends object>(
   division: Division<Prefix>,
   state: State
@@ -244,6 +285,12 @@ export function stateToDivision<Prefix extends string, State extends object>(
   return getUnprefixedObject(division.prefix, state);
 }
 
+/**
+ * Helper method for going from a state (usually parent state) to a division.
+ * @param division A division
+ * @param state The state of the store
+ * @returns The division state
+ */
 export function divisionToState<Prefix extends string, State extends object>(
   division: Division<Prefix>,
   state: State
@@ -251,8 +298,62 @@ export function divisionToState<Prefix extends string, State extends object>(
   return getPrefixedObject(division.prefix, state);
 }
 
+/**
+ * Helper method for creating a division.
+ * @param callback A callback that returns a division
+ * @returns A function that returns a division
+ */
 export function createDivision<T, Options = unknown>() {
   return <Prefix extends string>(
     callback: () => Division<Prefix, T, Options>
   ) => callback;
+}
+
+/**
+ * Helper method for partializing a division. This method is often used in 3rd party libraries to create a partialized version of a store.
+ * @param state The state of the store
+ * @param getPartializeFn A function that returns a partialized version of the division
+ * @returns A function that returns a partialized version of the division
+ */
+export function partializeDivision<
+  P extends string,
+  State extends object,
+  Options
+>(
+  state: State,
+  getPartializeFn: (
+    division: Division<P, FilterByPrefix<P, State>, Options>
+  ) =>
+    | ((state: FilterByPrefix<P, State>) => Partial<FilterByPrefix<P, State>>)
+    | undefined
+) {
+  return (division: Division<P, FilterByPrefix<P, State>, Options>) => {
+    const divisionData = stateToDivision(division, state);
+    const partializedData = getPartializeFn(division)?.(divisionData);
+    return divisionToState(division, partializedData ?? {});
+  };
+}
+
+/**
+ * Helper method for partializing a division. This method is often used in 3rd party libraries to create a partialized version of a store.
+ * @param state The state of the store
+ * @param divisions The divisions of the store
+ * @param getPartializeFn A function that returns a partialized version of the division
+ * @returns A function that returns a partialized version of the division
+ */
+export function partializeDivisions<
+  State extends object,
+  Divisions extends readonly Division[]
+>(
+  state: State,
+  divisions: Divisions,
+  getPartializeFn: (
+    division: Divisions[number]
+  ) =>
+    | ((
+        state: FilterByPrefix<Divisions[number]['prefix'], State>
+      ) => Partial<FilterByPrefix<Divisions[number]['prefix'], State>>)
+    | undefined
+) {
+  return spreadDivisions(divisions, partializeDivision(state, getPartializeFn));
 }
