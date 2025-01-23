@@ -64,6 +64,10 @@ useDivision2.setState;
 
 The Zustand Divisions API is written in TypeScript and provides full type support. This ensures that your state is type-safe and that you can easily navigate your state structure. There are examples in the [examples](https://github.com/mooalot/zustand-divisions/tree/main/examples) directory of this repository that demonstrate how to use TypeScript with the Zustand Divisions API.
 
+## Middleware
+
+The Zustand Divisions API is compatible with any middleware that works with Zustand. You can use middleware to add additional functionality to your store. The middleware MUST be at the root level of the store and not within a division. Divisions allow you to pass custom options to give you full control over the behavior of your divisions with any middleware. [Here](https://github.com/mooalot/zustand-divisions/blob/main/examples/divisionsWithOptions.ts) is an example using Zundo middleware.
+
 ## More Examples
 
 You can find more examples in the [examples](https://github.com/mooalot/zustand-divisions/tree/main/examples) directory of this repository. Each example demonstrates a different use case for the Zustand Divisions API, such as using divisions with 3rd party libraries or using a mix of divisions and global state.
