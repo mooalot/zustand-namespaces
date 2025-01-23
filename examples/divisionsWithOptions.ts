@@ -51,19 +51,15 @@ const divisions = [createDivision1(), createDivision2()] as const;
 type AppState = Divide<typeof divisions>;
 
 const useStore = create<AppState>()(
-  temporal(
-    divide(() => ({}), divisions),
-    {
-      partialize: (state) => {
-        return spreadDivisions(divisions, (division) => {
-          const divisiondData = stateToDivision(division, state);
-          const partializedData =
-            division.options?.partialized?.(divisiondData);
-          return divisionToState(division, partializedData ?? {});
-        });
-      },
-    }
-  )
+  temporal(divide(divisions), {
+    partialize: (state) => {
+      return spreadDivisions(divisions, (division) => {
+        const divisiondData = stateToDivision(division, state);
+        const partializedData = division.options?.partialized?.(divisiondData);
+        return divisionToState(division, partializedData ?? {});
+      });
+    },
+  })
 );
 
 export const [useDivision1, useDivision2] = divisionHooks(

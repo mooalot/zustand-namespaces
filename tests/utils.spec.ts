@@ -157,13 +157,10 @@ describe('Utility Functions', () => {
     const createDiv = createDivision<Division, CustomOptions<Division>>()(
       () => ({
         prefix: 'division1',
-        creator: divide(
-          () => ({
-            one: 'one',
-            two: 'two',
-          }),
-          subDivisions
-        ),
+        creator: divide(subDivisions, () => ({
+          one: 'one',
+          two: 'two',
+        })),
         options: {
           partialized: (state) => ({
             dataInDivision1: state.two,

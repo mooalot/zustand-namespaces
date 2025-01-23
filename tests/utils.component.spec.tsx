@@ -42,15 +42,12 @@ type Division1WithSubDivision1 = Division1 & Divide<typeof subDivisions>;
 // Define divisions
 const createDivision1 = createDivision<Division1WithSubDivision1>()(() => ({
   prefix: 'division1',
-  creator: divide(
-    (set) => ({
-      dataInDivision1: 'Initial Division1 Data',
-      updateDivision1Data: (data) => set({ dataInDivision1: data }),
-      resetDivision1Data: () =>
-        set({ dataInDivision1: 'Initial Division1 Data' }),
-    }),
-    subDivisions
-  ),
+  creator: divide(subDivisions, (set) => ({
+    dataInDivision1: 'Initial Division1 Data',
+    updateDivision1Data: (data) => set({ dataInDivision1: data }),
+    resetDivision1Data: () =>
+      set({ dataInDivision1: 'Initial Division1 Data' }),
+  })),
 }));
 
 const createDivision2 = createDivision<Division2>()(() => ({
@@ -67,7 +64,7 @@ const divisions = [createDivision1(), createDivision2()] as const;
 type AppState = Divide<typeof divisions>;
 
 // Create zustand store
-const useStore = create<AppState>(divide(() => ({}), divisions));
+const useStore = create<AppState>(divide(divisions));
 
 // Create utils for divisions
 const [useDivision1, useDivision2] = divisionHooks(useStore, ...divisions);

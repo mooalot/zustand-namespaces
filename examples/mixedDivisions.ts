@@ -32,12 +32,9 @@ type NotDivisiondData = {
 type AppState = Divide<typeof divisions> & NotDivisiondData;
 
 const useStore = create<AppState>(
-  divide(
-    () => ({
-      foo: 'bar',
-    }),
-    divisions
-  )
+  divide(divisions, () => ({
+    foo: 'bar',
+  }))
 );
 
 export const [useDivision1, useDivision2] = divisionHooks(

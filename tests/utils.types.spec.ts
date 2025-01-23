@@ -106,9 +106,7 @@ describe('divide', () => {
       }),
     };
 
-    const combinedCreator = create(
-      divide(() => ({}), [userDivision, adminDivision])
-    );
+    const combinedCreator = create(divide([userDivision, adminDivision]));
 
     expectType<
       StateCreator<
@@ -129,12 +127,9 @@ describe('divisionHook', () => {
     };
 
     const useStore = create<State>(
-      divide(
-        () => ({
-          admin_level: 1,
-        }),
-        [userDivision]
-      )
+      divide([userDivision], () => ({
+        admin_level: 1,
+      }))
     );
 
     const hook = divisionHook(useStore, userDivision);
@@ -162,12 +157,9 @@ describe('divisionHooks', () => {
     };
 
     const useStore = create<State>(
-      divide(
-        () => ({
-          admin_level: 1,
-        }),
-        [userDivision, adminDivision]
-      )
+      divide([userDivision, adminDivision], () => ({
+        admin_level: 1,
+      }))
     );
 
     const [useUser, useAdmin] = divisionHooks(

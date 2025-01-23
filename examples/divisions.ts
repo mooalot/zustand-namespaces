@@ -1,45 +1,33 @@
 import { create } from 'zustand';
-import { Divide } from '../src/types';
-import { createDivision, divisionHooks, divide } from '../src/utils';
+import { createDivision, divide, divisionHook } from '../src/utils';
 
-type Division1 = {
-  dataInDivision1: string;
-};
-
-type Division2 = {
-  dataInDivision2: string;
-};
-
-const createDivision1 = createDivision<Division1>()(() => ({
+const division1 = createDivision(() => ({
   prefix: 'division1',
   creator: () => ({
     dataInDivision1: 'data',
   }),
 }));
 
-const createDivision2 = createDivision<Division2>()(() => ({
+const division2 = createDivision(() => ({
   prefix: 'division2',
   creator: () => ({
     dataInDivision2: 'data',
   }),
-  options: {
-    test: 'test',
-  },
 }));
 
-const divisions = [createDivision1(), createDivision2()] as const;
-
-type AppState = Divide<typeof divisions>;
-
-const useStore = create<AppState>(divide(() => ({}), divisions));
-
-export const [useDivision1, useDivision2] = divisionHooks(
-  useStore,
-  ...divisions
+const useStore = create(
+  divide([division1(), division2()], () => ({
+    mainData: 'data',
+  }))
 );
+
+export const useDivision1 = divisionHook(useStore, division1());
+
+export const useDivision2 = divisionHook(useStore, division2());
 
 // useStore((state) => state.division1_dataInDivision1);
 // useStore((state) => state.division2_dataInDivision2);
+// useStore((state) => state.mainData);
 // useStore.getState;
 // useStore.setState;
 
