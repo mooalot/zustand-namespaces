@@ -291,6 +291,6 @@ The partialized divisions state accumulated from the callback.
 ## Types Used
 
 - **`Division`**: Represents a slice of prefixed state in the store.
-- **`Divide`**: A function that creates a state from an array of divisions.
+- **`Divide`**: A generic type that creates an intersected type from an array of divisions.
 
 ---

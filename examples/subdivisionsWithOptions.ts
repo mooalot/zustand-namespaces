@@ -6,7 +6,7 @@ import {
   divide,
   partializeDivisions,
 } from '../src/utils';
-import { temporal } from 'zundo';
+import { temporal, ZundoOptions } from 'zundo';
 
 type Division2 = {
   dataInDivision2: string;
@@ -17,7 +17,7 @@ type SubDivision1 = {
 };
 
 type CustomOptions<T> = {
-  partialized?: (state: T) => Partial<T>;
+  partialized?: ZundoOptions<T, Partial<T>>['partialize'];
 };
 
 const createSubDivision1 = createDivision<
