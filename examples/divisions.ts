@@ -22,6 +22,9 @@ const createDivision2 = createDivision<Division2>()(() => ({
   creator: () => ({
     dataInDivision2: 'data',
   }),
+  options: {
+    test: 'test',
+  },
 }));
 
 const divisions = [createDivision1(), createDivision2()] as const;

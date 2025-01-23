@@ -20,7 +20,7 @@ export function transformStateCreatorArgs<
   State extends object,
   T
 >(
-  division: Division<P, T>,
+  division: Division<T, P>,
   ...args: Parameters<StateCreator<State>>
 ): Parameters<StateCreator<FilterByPrefix<P, State>>> {
   type O = FilterByPrefix<P, State>;
@@ -179,7 +179,7 @@ function transformCallback<State extends object>(
   ...args: Parameters<StateCreator<State>>
 ) {
   return function <P extends string>(
-    division: Division<P, FilterByPrefix<P, State>>
+    division: Division<FilterByPrefix<P, State>, P>
   ) {
     const newArgs = transformStateCreatorArgs(division, ...args);
     return getPrefixedObject(division.prefix, division.creator(...newArgs));
@@ -209,7 +209,7 @@ function spreadTransformedDivisions<
  */
 export function divisionHook<Prefix extends string, Store extends object>(
   useStore: UseBoundStore<StoreApi<Store>>,
-  division: Division<Prefix, FilterByPrefix<Prefix, Store>>
+  division: Division<FilterByPrefix<Prefix, Store>, Prefix>
 ): UseBoundStore<StoreApi<FilterByPrefix<Prefix, Store>>> {
   type T = FilterByPrefix<Prefix, Store>;
 
@@ -261,7 +261,7 @@ export function divisionHooks<
   Store extends object,
   Divisions extends readonly Division[],
   Result = {
-    [K in keyof Divisions]: Divisions[K] extends Division<string, infer Data>
+    [K in keyof Divisions]: Divisions[K] extends Division<infer Data, string>
       ? UseBoundStore<StoreApi<Data>>
       : never;
   }
@@ -277,8 +277,9 @@ export function divisionHooks<
  * @param state The state of the store
  * @returns The division state
  */
-export function stateToDivision<Prefix extends string, State extends object>(
-  division: Division<Prefix>,
+export function stateToDivision<State extends object, P extends string>(
+  // eslint-disable-next-line
+  division: Division<any, P>,
   state: State
 ) {
   return getUnprefixedObject(division.prefix, state);
@@ -290,27 +291,57 @@ export function stateToDivision<Prefix extends string, State extends object>(
  * @param state The state of the store
  * @returns The division state
  */
-export function divisionToState<Prefix extends string, State extends object>(
-  division: Division<Prefix>,
+export function divisionToState<State extends object, P extends string>(
+  // eslint-disable-next-line
+  division: Division<any, P>,
   state: State
 ) {
   return getPrefixedObject(division.prefix, state);
 }
 
+type CreateDivision = {
+  <Prefix extends string, Data, Options>(
+    callback: () => Division<Data, Prefix, Options>
+  ): () => Division<Data, Prefix, Options>;
+  <T, Options = unknown>(): <Prefix extends string, Data extends T>(
+    callback: () => Division<Data, Prefix, Options>
+  ) => () => Division<Data, Prefix, Options>;
+};
+
 /**
  * Helper method for creating a division.
  * @param callback A callback that returns a division
  * @returns A function that returns a division
+ *
+ * @example
+ * const createTypedDivision = createDivision<Division1, CustomOptions<Division1>>()( () => ({
+ *  prefix: 'division1',
+ * creator: () => ({
+ * dataInDivision1: 'data',
+ * }),
+ * }));
+ *
+ * const createTypeInferredDivision = createDivision(() => ({
+ *  prefix: 'division1',
+ * creator: () => ({
+ * dataInDivision1: 'data',
+ * }),
+ * }));
  */
-export function createDivision<T = 'IllInferYourType', Options = unknown>() {
-  return <Prefix extends string, Data>(
-    callback: () => Division<
-      Prefix,
-      T extends 'IllInferYourType' ? Data : T,
-      Options
-    >
-  ) => callback;
-}
+// eslint-disable-next-line
+export const createDivision: CreateDivision = ((callback?: any) => {
+  if (callback) {
+    // The first overload implementation
+    return () => callback();
+  } else {
+    // The second overload implementation
+    return <Prefix extends string, Data, Options>(
+      callback: () => Division<Data, Prefix, Options>
+    ) => {
+      return () => callback();
+    };
+  }
+}) as CreateDivision;
 
 /**
  * Helper method for partializing a division. This method is often used in 3rd party libraries to create a partialized version of a store.
@@ -325,12 +356,12 @@ export function partializeDivision<
 >(
   state: State,
   getPartializeFn: (
-    division: Division<P, FilterByPrefix<P, State>, Options>
+    division: Division<FilterByPrefix<P, State>, P, Options>
   ) =>
     | ((state: FilterByPrefix<P, State>) => Partial<FilterByPrefix<P, State>>)
     | undefined
 ) {
-  return (division: Division<P, FilterByPrefix<P, State>, Options>) => {
+  return (division: Division<FilterByPrefix<P, State>, P, Options>) => {
     const divisionData = stateToDivision(division, state);
     const partializedData = getPartializeFn(division)?.(divisionData);
     return divisionToState(division, partializedData ?? {});

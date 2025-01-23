@@ -22,7 +22,7 @@ type State = {
   admin_level: number;
 };
 
-type UserDivision = Division<'user', FilterByPrefix<'user', State>>;
+type UserDivision = Division<FilterByPrefix<'user', State>, 'user'>;
 
 type AdminDivision = {
   prefix: 'admin';

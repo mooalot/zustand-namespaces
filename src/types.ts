@@ -1,7 +1,7 @@
 import { StateCreator, StoreApi } from 'zustand';
 
 type ExtractPrefixedDivisionType<T> = T extends Division<infer P, infer U>
-  ? PrefixObject<P, U>
+  ? PrefixObject<U, P>
   : never;
 
 export type UnionToIntersection<U> = // eslint-disable-next-line
@@ -22,9 +22,9 @@ export type GetState<T> = StoreApi<T>['getState'];
 export type SetState<T> = StoreApi<T>['setState'];
 
 export type Division<
-  Prefix extends string = string,
   // eslint-disable-next-line
   T = any,
+  Prefix extends string = string,
   Options = unknown
 > = {
   prefix: Prefix;
