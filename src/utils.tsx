@@ -6,6 +6,7 @@ import {
   PrefixObject,
   SetState,
   Division,
+  Divide,
 } from './types';
 import {
   StateCreator,
@@ -151,28 +152,26 @@ export function spreadDivisions<Divisions extends readonly Division[], Data>(
  * const createDivision1 = create<Divide<typeof [divisions1]>>()(
  *  divide(() => ({}), [divisions1])
  * );
- *
- * @note Type inference doesnt work yet for this function. It would be best practice to pass in a type to the zustand 'create' function
  */
 export function divide<
   T extends object,
   Divisions extends readonly Division[],
   Mis extends [StoreMutatorIdentifier, unknown][] = [],
-  Mos extends [StoreMutatorIdentifier, unknown][] = []
+  Mos extends [StoreMutatorIdentifier, unknown][] = [],
+  Option extends ExcludeByPrefix<
+    Divisions[number]['prefix'],
+    T
+  > = ExcludeByPrefix<Divisions[number]['prefix'], T>,
+  Result extends Option & Divide<Divisions> = Option & Divide<Divisions>
 >(
-  creator: StateCreator<
-    T,
-    Mis,
-    Mos,
-    ExcludeByPrefix<Divisions[number]['prefix'], T>
-  >,
+  creator: StateCreator<T, Mis, Mos, Option>,
   divisions: Divisions
-): StateCreator<T, Mis, Mos, T> {
+): StateCreator<Result, Mis, Mos, Result> {
   return (...args) => {
     return {
       ...spreadTransformedDivisions(divisions, ...args),
-      ...creator(...args),
-    } as T;
+      ...creator(...(args as Parameters<StateCreator<T, Mis, Mos, Option>>)),
+    } as Result;
   };
 }
 
@@ -303,9 +302,13 @@ export function divisionToState<Prefix extends string, State extends object>(
  * @param callback A callback that returns a division
  * @returns A function that returns a division
  */
-export function createDivision<T, Options = unknown>() {
-  return <Prefix extends string>(
-    callback: () => Division<Prefix, T, Options>
+export function createDivision<T = 'IllInferYourType', Options = unknown>() {
+  return <Prefix extends string, Data>(
+    callback: () => Division<
+      Prefix,
+      T extends 'IllInferYourType' ? Data : T,
+      Options
+    >
   ) => callback;
 }
 

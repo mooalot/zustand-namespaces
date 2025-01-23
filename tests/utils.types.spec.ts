@@ -13,13 +13,8 @@ import {
   divisionToState,
   createDivision,
 } from '../src/utils';
-import { StoreApi, StateCreator, create } from 'zustand';
-import {
-  FilterByPrefix,
-  PrefixObject,
-  Division,
-  UseBoundDivision,
-} from '../src/types';
+import { StoreApi, StateCreator, create, UseBoundStore } from 'zustand';
+import { FilterByPrefix, PrefixObject, Division } from '../src/types';
 
 type State = {
   user_name: string;
@@ -145,7 +140,7 @@ describe('divisionHook', () => {
     const hook = divisionHook(useStore, userDivision);
 
     expect(hook).toBeDefined();
-    expectType<UseBoundDivision<FilterByPrefix<'user', State>>>(hook);
+    expectType<UseBoundStore<StoreApi<FilterByPrefix<'user', State>>>>(hook);
   });
 });
 
@@ -184,8 +179,10 @@ describe('divisionHooks', () => {
     expect(useUser).toBeDefined();
     expect(useAdmin).toBeDefined();
 
-    expectType<UseBoundDivision<FilterByPrefix<'user', State>>>(useUser);
-    expectType<UseBoundDivision<FilterByPrefix<'admin', State>>>(useAdmin);
+    expectType<UseBoundStore<StoreApi<FilterByPrefix<'user', State>>>>(useUser);
+    expectType<UseBoundStore<StoreApi<FilterByPrefix<'admin', State>>>>(
+      useAdmin
+    );
   });
 });
 
