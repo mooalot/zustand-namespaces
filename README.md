@@ -16,7 +16,7 @@ npm install zustand-divisions
 
 Here is an example of how you can use the Zustand Divisions API in your application:
 
-```typescript
+```javascript
 import { create } from 'zustand';
 import { createDivision, divide, divisionHook } from 'zustand-divisions';
 
@@ -66,7 +66,7 @@ The Zustand Divisions API is written in TypeScript and provides full type suppor
 
 ## Middleware
 
-The Zustand Divisions API is compatible with any middleware that works with Zustand. You can use middleware to add additional functionality to your store. The middleware MUST be at the root level of the store and not within a division. Divisions allow you to pass custom options to give you full control over the behavior of your divisions with any middleware. [Here](https://github.com/mooalot/zustand-divisions/blob/main/examples/divisionsWithOptions.ts) is an example using Zundo middleware.
+The Zustand Divisions API integrates with any middleware compatible with Zustand, enabling you to extend your store's functionality. Middleware should typically be applied within the Zustand store creator method, rather than inside a division. Zustand Divisions provides robust tools to compartmentalize third-party logic within divisions while maintaining flexibility. Divisions allow you to pass custom options, giving you complete control over their behavior in combination with any middleware. For an example of using Zundo middleware with divisions, check out this [example](https://github.com/mooalot/zustand-divisions/blob/main/examples/divisionsWithOptions.ts).
 
 ## More Examples
 
@@ -96,6 +96,7 @@ Creates a new division with a prefixed state.
 **Usage:**
 
 ```typescript
+//Note that this is a function that returns a function
 const createTypedDivision = createDivision<
   Division1,
   CustomOptions<Division1>
