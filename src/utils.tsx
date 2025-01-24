@@ -1,10 +1,8 @@
 import {
   ExcludeByPrefix,
   FilterByPrefix,
-  GetState,
   IncludeByPrefix,
   PrefixObject,
-  SetState,
   Division,
   Divide,
 } from './types';
@@ -210,18 +208,20 @@ export function divisionHook<Prefix extends string, Store extends object>(
 ): UseBoundStore<StoreApi<FilterByPrefix<Prefix, Store>>> {
   type T = FilterByPrefix<Prefix, Store>;
 
-  const hook: UseBoundStore<StoreApi<T>> = ((selector) => {
+  type BoundStore = UseBoundStore<StoreApi<T>>;
+
+  const hook: BoundStore = ((selector) => {
     return useStore((state) => {
       const unprefixState = getUnprefixedObject(division.prefix, state);
       return selector(unprefixState);
     });
   }) as UseBoundStore<StoreApi<T>>;
 
-  const get: GetState<T> = () => {
+  const get: BoundStore['getState'] = () => {
     const state = useStore.getState();
     return getUnprefixedObject(division.prefix, state);
   };
-  const set: SetState<T> = (state) => {
+  const set: BoundStore['setState'] = (state) => {
     useStore.setState((currentState) => {
       const unprefixedState = getUnprefixedObject(
         division.prefix,
@@ -238,8 +238,24 @@ export function divisionHook<Prefix extends string, Store extends object>(
     });
   };
 
+  const subscribe: BoundStore['subscribe'] = (listener) => {
+    return useStore.subscribe((newState, oldState) => {
+      listener(
+        getUnprefixedObject(division.prefix, newState),
+        getUnprefixedObject(division.prefix, oldState)
+      );
+    });
+  };
+
+  const getInitialState: BoundStore['getInitialState'] = () => {
+    return getUnprefixedObject(division.prefix, useStore.getInitialState());
+  };
+
+  hook.getInitialState = getInitialState;
   hook.getState = get;
   hook.setState = set;
+  hook.subscribe = subscribe;
+  hook.destroy = useStore.destroy;
 
   return hook;
 }

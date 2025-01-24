@@ -161,6 +161,7 @@ const App = () => {
     division2_resetDivision2Data();
     division1_subDivision1_resetSubDivision1Data();
   };
+
   return (
     <div>
       <SubDivision1Component />
@@ -188,6 +189,14 @@ const App = () => {
 
 // Clean up after each test
 afterEach(cleanup);
+
+describe('Zustand Division Stores', () => {
+  test('should have division1 methods in useStore', () => {
+    Object.keys(useStore).forEach((key) => {
+      expect(key in useDivision1).toBeTruthy();
+    });
+  });
+});
 
 // Tests
 describe('Zustand Divisions with Components', () => {

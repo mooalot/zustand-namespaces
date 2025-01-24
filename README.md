@@ -1,8 +1,8 @@
-# Zustand Divisions API Documentation
+# Zustand Divisions
 
 This API offers a modular state management solution designed to complement Zustand. By introducing a division-based approach, it provides greater flexibility compared to Zustand's traditional slice pattern. This flexibility is especially beneficial for managing partialization and other complexities in large state structures.
 
-At its core, the API enables the creation and use of distinct state divisions, facilitating modular and scalable state management within your application. While the architecture relies on a single store, it organizes the state into multiple divisions, each with its own dedicated state, actions, and hooks, ensuring a streamlined and maintainable structure.
+At its core, the API enables the creation and use of distinct state divisions by using namespaced slices. While the architecture relies on a single store, it organizes the state into multiple divisions, each with its own dedicated state, actions, and hooks, ensuring a streamlined and maintainable structure.
 
 ## Installation
 
