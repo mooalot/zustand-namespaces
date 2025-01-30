@@ -28,14 +28,23 @@ export type Division<
   options?: Options;
 };
 
+/**
+ * Extracts all types that match the prefix, not altering the key names.
+ */
 export type IncludeByPrefix<Prefix extends string, T> = {
   [K in keyof T as K extends `${Prefix}_${string}` ? K : never]: T[K];
 };
 
+/**
+ * Extracts all types that match the prefix, removing the prefix from the key names.
+ */
 export type FilterByPrefix<Prefix extends string, T> = {
   [K in keyof T as K extends `${Prefix}_${infer V}` ? V : never]: T[K];
 };
 
+/**
+ * Excludes all types that match the prefix, not altering the key names.
+ */
 export type ExcludeByPrefix<Prefix extends string, T> = {
   [K in keyof T as K extends `${Prefix}_${string}` ? never : K]: T[K];
 };

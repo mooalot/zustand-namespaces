@@ -9,4 +9,10 @@ export {
   partializeDivision,
   partializeDivisions,
 } from './utils';
-export type { Divide, Division } from './types';
+export type {
+  Divide,
+  Division,
+  FilterByPrefix,
+  IncludeByPrefix,
+  ExcludeByPrefix,
+} from './types';
