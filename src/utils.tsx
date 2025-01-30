@@ -316,9 +316,9 @@ type CreateDivision = {
   <Prefix extends string, Data, Options>(
     callback: () => Division<Data, Prefix, Options>
   ): () => Division<Data, Prefix, Options>;
-  <T, Options = unknown>(): <Prefix extends string, Data extends T>(
-    callback: () => Division<Data, Prefix, Options>
-  ) => () => Division<Data, Prefix, Options>;
+  <T, Options = unknown>(): <Prefix extends string>(
+    callback: () => Division<T, Prefix, Options>
+  ) => () => Division<T, Prefix, Options>;
 };
 
 /**

@@ -10,10 +10,12 @@ import { temporal, ZundoOptions } from 'zundo';
 
 type Division2 = {
   dataInDivision2: string;
+  arrayInDivision2: number[];
 };
 
 type SubDivision1 = {
   dataInSubDivision1: string;
+  arrayInSubDivision1: number[];
 };
 
 type CustomOptions<T> = {
@@ -27,6 +29,7 @@ const createSubDivision1 = createDivision<
   prefix: 'subDivision1',
   creator: () => ({
     dataInSubDivision1: 'data',
+    arrayInSubDivision1: [],
   }),
   options: {
     partialized: (state) => ({
@@ -65,6 +68,7 @@ const createDivision2 = createDivision<Division2, CustomOptions<Division2>>()(
     prefix: 'division2',
     creator: () => ({
       dataInDivision2: 'data',
+      arrayInDivision2: [],
     }),
   })
 );
