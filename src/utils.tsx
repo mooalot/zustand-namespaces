@@ -141,16 +141,16 @@ export function spreadDivisions<Divisions extends readonly Division[], Data>(
   }, {} as Data);
 }
 
-// /**
-//  * Method used to divide divisions into a parent creator method.
-//  * @param creator The parent creator method
-//  * @param divisions The divisions
-//  * @returns A new creator method that includes the divisions
-//  * @example
-//  * const createDivision1 = create<Divide<typeof [divisions1]>>()(
-//  *  divide([divisions1],() => ({}))
-//  * );
-//  */
+/**
+ * Method used to divide divisions into a parent creator method.
+ * @param creator The parent creator method
+ * @param divisions The divisions
+ * @returns A new creator method that includes the divisions
+ * @example
+ * const createDivision1 = create<Divide<typeof [divisions1]>>()(
+ *  divide([divisions1],() => ({}))
+ * );
+ */
 export function divide<
   T extends object,
   Divisions extends readonly Division[],
@@ -160,12 +160,14 @@ export function divide<
   Mos extends [StoreMutatorIdentifier, unknown][] = []
 >(
   divisions: Divisions,
-  creator?: StateCreator<T, Mis, Mos, Option>
+  creator?: StateCreator<Result, Mis, Mos, Option>
 ): StateCreator<Result, Mis, Mos, Result> {
   return (...args) => {
     return {
       ...spreadTransformedDivisions(divisions, ...args),
-      ...creator?.(...(args as Parameters<StateCreator<T, Mis, Mos, Option>>)),
+      ...creator?.(
+        ...(args as Parameters<StateCreator<Result, Mis, Mos, Option>>)
+      ),
     } as Result;
   };
 }

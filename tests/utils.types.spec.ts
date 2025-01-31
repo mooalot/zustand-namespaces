@@ -114,6 +114,55 @@ describe('divide', () => {
       >
     >(combinedCreator);
   });
+
+  test('the set method inside divide s hould be of type SetState', () => {
+    const userDivision: UserDivision = {
+      prefix: 'user',
+      creator: () => ({
+        name: 'Alice',
+        age: 25,
+      }),
+    };
+
+    const adminDivision: AdminDivision = {
+      prefix: 'admin',
+      creator: () => ({
+        level: 1,
+      }),
+    };
+
+    create(
+      divide([userDivision, adminDivision], (set) => {
+        expectType<StoreApi<State>['setState']>(set);
+        return {};
+      })
+    );
+  });
+
+  test('should infer the divide type', () => {
+    const userDivision = createDivision(() => ({
+      prefix: 'user',
+      creator: () => ({
+        name: 'Alice',
+        age: 25,
+      }),
+    }));
+
+    const adminDivision = createDivision(() => ({
+      prefix: 'admin',
+      creator: () => ({
+        level: 1,
+      }),
+    }));
+
+    const useStore = create(
+      divide([userDivision(), adminDivision()], () => ({
+        admin_level: 1,
+      }))
+    );
+
+    expectType<UseBoundStore<StoreApi<State>>>(useStore);
+  });
 });
 
 describe('divisionHook', () => {
