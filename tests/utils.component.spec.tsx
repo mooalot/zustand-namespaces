@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from 'vitest';
-import React from 'react';
+import React, { act } from 'react';
 import { create } from 'zustand';
 import { cleanup, render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
@@ -150,6 +150,26 @@ const Division2Component = () => {
   );
 };
 
+function NoSelectorComponent() {
+  const dataDivision1 = useDivision1();
+  const dataDivision2 = useDivision2();
+  const dataSubDivision1 = useSubDivision1();
+
+  return (
+    <div>
+      <p data-testid="no-selector-division1-data">
+        {dataDivision1.dataInDivision1}
+      </p>
+      <p data-testid="no-selector-division2-data">
+        {dataDivision2.dataInDivision2}
+      </p>
+      <p data-testid="no-selector-subDivision1-data">
+        {dataSubDivision1.dataInSubDivision1}
+      </p>
+    </div>
+  );
+}
+
 const App = () => {
   const {
     division1_resetDivision1Data,
@@ -167,6 +187,7 @@ const App = () => {
       <SubDivision1Component />
       <Division1Component />
       <Division2Component />
+      <NoSelectorComponent />
       <button onClick={resetAll} type="button">
         Reset All
       </button>
@@ -361,5 +382,59 @@ describe('Zustand Divisions with Components', () => {
     expect(screen.getByTestId('subDivision1-data')).toHaveTextContent(
       'Initial SubDivision1 Data'
     );
+  });
+
+  test('should render initial data for divisions without selector', () => {
+    render(<NoSelectorComponent />);
+    expect(screen.getByTestId('no-selector-division1-data')).toHaveTextContent(
+      'Initial Division1 Data'
+    );
+    expect(screen.getByTestId('no-selector-division2-data')).toHaveTextContent(
+      'Initial Division2 Data'
+    );
+    expect(
+      screen.getByTestId('no-selector-subDivision1-data')
+    ).toHaveTextContent('Initial SubDivision1 Data');
+  });
+
+  test('should update division1 data when the button is clicked without selector', async () => {
+    render(<NoSelectorComponent />);
+    expect(screen.getByTestId('no-selector-division1-data')).toHaveTextContent(
+      'Initial Division1 Data'
+    );
+    act(() => {
+      useDivision1.getState().updateDivision1Data('Updated Division1 Data');
+    });
+    expect(screen.getByTestId('no-selector-division1-data')).toHaveTextContent(
+      'Updated Division1 Data'
+    );
+  });
+
+  test('should update division2 data when the button is clicked without selector', async () => {
+    render(<NoSelectorComponent />);
+    expect(screen.getByTestId('no-selector-division2-data')).toHaveTextContent(
+      'Initial Division2 Data'
+    );
+    act(() => {
+      useDivision2.getState().updateDivision2Data('Updated Division2 Data');
+    });
+    expect(screen.getByTestId('no-selector-division2-data')).toHaveTextContent(
+      'Updated Division2 Data'
+    );
+  });
+
+  test('should update subDivision1 data when the button is clicked without selector', async () => {
+    render(<NoSelectorComponent />);
+    expect(
+      screen.getByTestId('no-selector-subDivision1-data')
+    ).toHaveTextContent('Initial SubDivision1 Data');
+    act(() => {
+      useSubDivision1
+        .getState()
+        .updateSubDivision1Data('Updated SubDivision1 Data');
+    });
+    expect(
+      screen.getByTestId('no-selector-subDivision1-data')
+    ).toHaveTextContent('Updated SubDivision1 Data');
   });
 });

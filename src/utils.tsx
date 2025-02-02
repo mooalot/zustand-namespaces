@@ -127,7 +127,6 @@ export function getUnprefixedObject<T extends string, Data extends object>(
  * @param divisions The divisions
  * @param callback A callback that returns the division data
  * @returns The combined division data
- * @example
  */
 export function spreadDivisions<Divisions extends readonly Division[], Data>(
   divisions: Divisions,
@@ -146,10 +145,6 @@ export function spreadDivisions<Divisions extends readonly Division[], Data>(
  * @param creator The parent creator method
  * @param divisions The divisions
  * @returns A new creator method that includes the divisions
- * @example
- * const createDivision1 = create<Divide<typeof [divisions1]>>()(
- *  divide([divisions1],() => ({}))
- * );
  */
 export function divide<
   T extends object,
@@ -215,9 +210,9 @@ export function divisionHook<Prefix extends string, Store extends object>(
   const hook: BoundStore = ((selector) => {
     return useStore((state) => {
       const unprefixState = getUnprefixedObject(division.prefix, state);
-      return selector(unprefixState);
+      return selector ? selector(unprefixState) : unprefixState;
     });
-  }) as UseBoundStore<StoreApi<T>>;
+  }) as BoundStore;
 
   const get: BoundStore['getState'] = () => {
     const state = useStore.getState();
