@@ -14,10 +14,12 @@ type CustomOptions<T> = {
 
 type Division1 = {
   dataInDivision1: string;
+  data: string;
 };
 
 type Division2 = {
   dataInDivision2: string;
+  data: number;
 };
 
 const createDivision1 = createDivision<Division1, CustomOptions<Division1>>()(
@@ -25,6 +27,7 @@ const createDivision1 = createDivision<Division1, CustomOptions<Division1>>()(
     prefix: 'division1',
     creator: () => ({
       dataInDivision1: 'data',
+      data: 'data',
     }),
     options: {
       partialized: (state) => ({
@@ -39,6 +42,7 @@ const createDivision2 = createDivision<Division2, CustomOptions<Division2>>()(
     prefix: 'division2',
     creator: () => ({
       dataInDivision2: 'data',
+      data: 1,
     }),
     options: {},
   })

@@ -387,17 +387,12 @@ export function partializeDivision<
  */
 export function partializeDivisions<
   State extends object,
-  Divisions extends readonly Division[]
->(
-  state: State,
-  divisions: Divisions,
-  getPartializeFn: (
-    division: Divisions[number]
-  ) =>
-    | ((
-        state: FilterByPrefix<Divisions[number]['prefix'], State>
-      ) => Partial<FilterByPrefix<Divisions[number]['prefix'], State>>)
-    | undefined
-) {
+  Divisions extends readonly Division[],
+  // function not typed due to union type error from divisions
+  Fn extends <D extends Divisions[number]>(
+    division: D
+  ) => // eslint-disable-next-line
+  ((state: any) => any) | undefined
+>(state: State, divisions: Divisions, getPartializeFn: Fn) {
   return spreadDivisions(divisions, partializeDivision(state, getPartializeFn));
 }
