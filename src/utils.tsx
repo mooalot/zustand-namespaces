@@ -225,13 +225,8 @@ export function divisionHook<Prefix extends string, Store extends object>(
         currentState
       );
       const updatedState =
-        typeof state === 'function'
-          ? (state as (s: T) => T | Partial<T>)(unprefixedState)
-          : state;
-      return {
-        ...currentState,
-        ...getPrefixedObject(division.prefix, updatedState),
-      };
+        typeof state === 'function' ? state(unprefixedState) : state;
+      return getPrefixedObject(division.prefix, updatedState) as Store;
     });
   };
 
