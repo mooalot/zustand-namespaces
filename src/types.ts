@@ -1,4 +1,4 @@
-import { StateCreator } from 'zustand';
+import { StateCreator, StoreMutatorIdentifier } from 'zustand';
 
 export type Namespaced<T extends readonly Namespace[]> = UnionToIntersection<
   ExtractNamespaceType<T[number]>
@@ -8,10 +8,12 @@ export type Namespace<
   // eslint-disable-next-line
   T = any,
   Name extends string = string,
-  Options = unknown
+  Options = unknown,
+  Mps extends [StoreMutatorIdentifier, unknown][] = [],
+  Mcs extends [StoreMutatorIdentifier, unknown][] = []
 > = {
   name: Name;
-  creator: StateCreator<T>;
+  creator: StateCreator<T, Mps, Mcs>;
   options?: Options;
 };
 

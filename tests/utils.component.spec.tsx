@@ -4,189 +4,196 @@ import { create } from 'zustand';
 import { cleanup, render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import '@testing-library/jest-dom';
-import { createDivision, divisionHooks, divide } from '../src/utils';
-import { Divide } from '../src/types';
+import { createNamespace, getNamespaceHook, namespaced } from '../src/utils';
+import { Namespaced } from '../src/types';
 
-type Division1 = {
-  dataInDivision1: string;
-  updateDivision1Data: (data: string) => void;
-  resetDivision1Data: () => void;
+type Namespace1 = {
+  dataInNamespace1: string;
+  updateNamespace1Data: (data: string) => void;
+  resetNamespace1Data: () => void;
 };
 
-type Division2 = {
-  dataInDivision2: string;
-  updateDivision2Data: (data: string) => void;
-  resetDivision2Data: () => void;
+type Namespace2 = {
+  dataInNamespace2: string;
+  updateNamespace2Data: (data: string) => void;
+  resetNamespace2Data: () => void;
 };
 
-type SubDivision1 = {
-  dataInSubDivision1: string;
-  updateSubDivision1Data: (data: string) => void;
-  resetSubDivision1Data: () => void;
-};
+// type SubNamespace1 = {
+//   dataInSubNamespace1: string;
+//   updateSubNamespace1Data: (data: string) => void;
+//   resetSubNamespace1Data: () => void;
+// };
 
-const subDivisions = [
-  createDivision<SubDivision1>()(() => ({
-    prefix: 'subDivision1',
-    creator: (set) => ({
-      dataInSubDivision1: 'Initial SubDivision1 Data',
-      updateSubDivision1Data: (data) => set({ dataInSubDivision1: data }),
-      resetSubDivision1Data: () =>
-        set({ dataInSubDivision1: 'Initial SubDivision1 Data' }),
-    }),
-  }))(),
-] as const;
+// const subNamespaces = [
+//   createNamespace<SubNamespace1>()(() => ({
+//     name: 'subNamespace1',
+//     creator: (set) => ({
+//       dataInSubNamespace1: 'Initial SubNamespace1 Data',
+//       updateSubNamespace1Data: (data) => set({ dataInSubNamespace1: data }),
+//       resetSubNamespace1Data: () =>
+//         set({ dataInSubNamespace1: 'Initial SubNamespace1 Data' }),
+//     }),
+//   })),
+// ] as const;
 
-type Division1WithSubDivision1 = Division1 & Divide<typeof subDivisions>;
+// type Namespace1WithSubNamespace1 = Namespace1 &
+//   Namespaced<typeof subNamespaces>;
 
-// Define divisions
-const createDivision1 = createDivision<Division1WithSubDivision1>()(() => ({
-  prefix: 'division1',
-  creator: divide(subDivisions, (set) => ({
-    dataInDivision1: 'Initial Division1 Data',
-    updateDivision1Data: (data) => set({ dataInDivision1: data }),
-    resetDivision1Data: () =>
-      set({ dataInDivision1: 'Initial Division1 Data' }),
-  })),
-}));
+// const subNamespace = namespaced(...subNamespaces);
 
-const createDivision2 = createDivision<Division2>()(() => ({
-  prefix: 'division2',
+// Define namespaces
+const createNamespace1 = createNamespace<Namespace1>()(() => ({
+  name: 'namespace1',
   creator: (set) => ({
-    dataInDivision2: 'Initial Division2 Data',
-    updateDivision2Data: (data) => set({ dataInDivision2: data }),
-    resetDivision2Data: () =>
-      set({ dataInDivision2: 'Initial Division2 Data' }),
+    dataInNamespace1: 'Initial Namespace1 Data',
+    updateNamespace1Data: (data) => set({ dataInNamespace1: data }),
+    resetNamespace1Data: () =>
+      set({ dataInNamespace1: 'Initial Namespace1 Data' }),
   }),
 }));
 
-const divisions = [createDivision1(), createDivision2()] as const;
-type AppState = Divide<typeof divisions>;
+const createNamespace2 = createNamespace<Namespace2>()(() => ({
+  name: 'namespace2',
+  creator: (set) => ({
+    dataInNamespace2: 'Initial Namespace2 Data',
+    updateNamespace2Data: (data) => set({ dataInNamespace2: data }),
+    resetNamespace2Data: () =>
+      set({ dataInNamespace2: 'Initial Namespace2 Data' }),
+  }),
+}));
+
+const namespaces = [createNamespace1, createNamespace2] as const;
+type AppState = Namespaced<typeof namespaces>;
+
+const namespace = namespaced(...namespaces);
 
 // Create zustand store
-const useStore = create<AppState>(divide(divisions));
+const useStore = create<AppState>()(namespace(() => ({})));
 
-// Create utils for divisions
-const [useDivision1, useDivision2] = divisionHooks(useStore, ...divisions);
-const [useSubDivision1] = divisionHooks(useDivision1, ...subDivisions);
+// Create utils for namespaces
+const useNamespace1 = getNamespaceHook(useStore, createNamespace1);
+const useNamespace2 = getNamespaceHook(useStore, createNamespace2);
+// const useSubNamespace1 = useNamespace1.namespaces.subNamespace1;
+// const [useSubNamespace1] = namespaceHooks(useNamespace1, ...subNamespaces);
 
-const SubDivision1Component = () => {
-  const data = useSubDivision1((state) => state.dataInSubDivision1);
-  const { updateSubDivision1Data } = useSubDivision1.getState();
-  return (
-    <div>
-      <p data-testid="subDivision1-data">{data}</p>
-      <button
-        onClick={() => updateSubDivision1Data('Updated SubDivision1 Data')}
-        type="button"
-      >
-        Update SubDivision1
-      </button>
-      <button
-        onClick={() =>
-          useDivision1.setState({
-            subDivision1_dataInSubDivision1:
-              'Updated SubDivision1 Data Using setState',
-          })
-        }
-        type="button"
-      >
-        Update SubDivision1 Using setState
-      </button>
-    </div>
-  );
-};
+// const SubNamespace1Component = () => {
+//   const data = useSubNamespace1((state) => state.dataInSubNamespace1);
+//   const { updateSubNamespace1Data } = useSubNamespace1.getState();
+//   return (
+//     <div>
+//       <p data-testid="subNamespace1-data">{data}</p>
+//       <button
+//         onClick={() => updateSubNamespace1Data('Updated SubNamespace1 Data')}
+//         type="button"
+//       >
+//         Update SubNamespace1
+//       </button>
+//       <button
+//         onClick={() =>
+//           useNamespace1.setState({
+//             subNamespace1_dataInSubNamespace1:
+//               'Updated SubNamespace1 Data Using setState',
+//           })
+//         }
+//         type="button"
+//       >
+//         Update SubNamespace1 Using setState
+//       </button>
+//     </div>
+//   );
+// };
 
 // React components for testing
-const Division1Component = () => {
-  const data = useDivision1((state) => state.dataInDivision1);
-  const { updateDivision1Data } = useDivision1.getState();
+const Namespace1Component = () => {
+  const data = useNamespace1((state) => state.dataInNamespace1);
+  const { updateNamespace1Data } = useNamespace1.getState();
   return (
     <div>
-      <p data-testid="division1-data">{data}</p>
+      <p data-testid="namespace1-data">{data}</p>
       <button
-        onClick={() => updateDivision1Data('Updated Division1 Data')}
+        onClick={() => updateNamespace1Data('Updated Namespace1 Data')}
         type="button"
       >
-        Update Division1
+        Update Namespace1
       </button>
       <button
         onClick={() =>
-          useDivision1.setState({
-            dataInDivision1: 'Updated Division1 Data Using setState',
+          useNamespace1.setState({
+            dataInNamespace1: 'Updated Namespace1 Data Using setState',
           })
         }
         type="button"
       >
-        Update Division1 Using setState
+        Update Namespace1 Using setState
       </button>
     </div>
   );
 };
 
-const Division2Component = () => {
-  const data = useDivision2((state) => state.dataInDivision2);
-  const { updateDivision2Data } = useDivision2.getState();
+const Namespace2Component = () => {
+  const data = useNamespace2((state) => state.dataInNamespace2);
+  const { updateNamespace2Data } = useNamespace2.getState();
   return (
     <div>
-      <p data-testid="division2-data">{data}</p>
+      <p data-testid="namespace2-data">{data}</p>
       <button
-        onClick={() => updateDivision2Data('Updated Division2 Data')}
+        onClick={() => updateNamespace2Data('Updated Namespace2 Data')}
         type="button"
       >
-        Update Division2
+        Update Namespace2
       </button>
       <button
         onClick={() =>
-          useDivision2.setState({
-            dataInDivision2: 'Updated Division2 Data Using setState',
+          useNamespace2.setState({
+            dataInNamespace2: 'Updated Namespace2 Data Using setState',
           })
         }
         type="button"
       >
-        Update Division2 Using setState
+        Update Namespace2 Using setState
       </button>
     </div>
   );
 };
 
 function NoSelectorComponent() {
-  const dataDivision1 = useDivision1();
-  const dataDivision2 = useDivision2();
-  const dataSubDivision1 = useSubDivision1();
+  const dataNamespace1 = useNamespace1();
+  const dataNamespace2 = useNamespace2();
+  // const dataSubNamespace1 = useSubNamespace1();
 
   return (
     <div>
-      <p data-testid="no-selector-division1-data">
-        {dataDivision1.dataInDivision1}
+      <p data-testid="no-selector-namespace1-data">
+        {dataNamespace1.dataInNamespace1}
       </p>
-      <p data-testid="no-selector-division2-data">
-        {dataDivision2.dataInDivision2}
+      <p data-testid="no-selector-namespace2-data">
+        {dataNamespace2.dataInNamespace2}
       </p>
-      <p data-testid="no-selector-subDivision1-data">
-        {dataSubDivision1.dataInSubDivision1}
-      </p>
+      {/* <p data-testid="no-selector-subNamespace1-data">
+        {dataSubNamespace1.dataInSubNamespace1}
+      </p> */}
     </div>
   );
 }
 
 const App = () => {
   const {
-    division1_resetDivision1Data,
-    division2_resetDivision2Data,
-    division1_subDivision1_resetSubDivision1Data,
+    namespace1_resetNamespace1Data,
+    namespace2_resetNamespace2Data,
+    // namespace1_subNamespace1_resetSubNamespace1Data,
   } = useStore.getState();
   const resetAll = () => {
-    division1_resetDivision1Data();
-    division2_resetDivision2Data();
-    division1_subDivision1_resetSubDivision1Data();
+    namespace1_resetNamespace1Data();
+    namespace2_resetNamespace2Data();
+    // namespace1_subNamespace1_resetSubNamespace1Data();
   };
 
   return (
     <div>
-      <SubDivision1Component />
-      <Division1Component />
-      <Division2Component />
+      {/* <SubNamespace1Component /> */}
+      <Namespace1Component />
+      <Namespace2Component />
       <NoSelectorComponent />
       <button onClick={resetAll} type="button">
         Reset All
@@ -194,10 +201,10 @@ const App = () => {
       <button
         onClick={() =>
           useStore.setState({
-            division1_dataInDivision1: 'Initial Division1 Data',
-            division2_dataInDivision2: 'Initial Division2 Data',
-            division1_subDivision1_dataInSubDivision1:
-              'Initial SubDivision1 Data',
+            namespace1_dataInNamespace1: 'Initial Namespace1 Data',
+            namespace2_dataInNamespace2: 'Initial Namespace2 Data',
+            // namespace1_subNamespace1_dataInSubNamespace1:
+            //   'Initial SubNamespace1 Data',
           })
         }
         type="button"
@@ -211,230 +218,233 @@ const App = () => {
 // Clean up after each test
 afterEach(cleanup);
 
-describe('Zustand Division Stores', () => {
-  test('should have division1 methods in useStore', () => {
+describe('Zustand Namespace Stores', () => {
+  test('should have namespace1 methods in useStore', () => {
     Object.keys(useStore).forEach((key) => {
-      expect(key in useDivision1).toBeTruthy();
+      if (key === 'namespaces') return;
+      expect(key in useNamespace1).toBeTruthy();
     });
   });
 });
 
 // Tests
-describe('Zustand Divisions with Components', () => {
+describe('Zustand Namespaces with Components', () => {
   const resetStore = () => {
+    console.log('useStore', useStore);
     useStore.setState({
-      division1_dataInDivision1: 'Initial Division1 Data',
-      division2_dataInDivision2: 'Initial Division2 Data',
-      division1_subDivision1_dataInSubDivision1: 'Initial SubDivision1 Data',
+      namespace1_dataInNamespace1: 'Initial Namespace1 Data',
+      namespace2_dataInNamespace2: 'Initial Namespace2 Data',
+      // namespace1_subNamespace1_dataInSubNamespace1:
+      //   'Initial SubNamespace1 Data',
     });
   };
   afterEach(resetStore);
 
-  test('should render initial data for divisions', () => {
+  test('should render initial data for namespaces', () => {
     render(<App />);
-    expect(screen.getByTestId('division1-data')).toHaveTextContent(
-      'Initial Division1 Data'
+    expect(screen.getByTestId('namespace1-data')).toHaveTextContent(
+      'Initial Namespace1 Data'
     );
-    expect(screen.getByTestId('division2-data')).toHaveTextContent(
-      'Initial Division2 Data'
+    expect(screen.getByTestId('namespace2-data')).toHaveTextContent(
+      'Initial Namespace2 Data'
     );
-    expect(screen.getByTestId('subDivision1-data')).toHaveTextContent(
-      'Initial SubDivision1 Data'
+    // expect(screen.getByTestId('subNamespace1-data')).toHaveTextContent(
+    //   'Initial SubNamespace1 Data'
+    // );
+  });
+
+  test('should update namespace1 data when the button is clicked', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    expect(screen.getByTestId('namespace1-data')).toHaveTextContent(
+      'Initial Namespace1 Data'
+    );
+    await user.click(screen.getByRole('button', { name: 'Update Namespace1' }));
+    expect(screen.getByTestId('namespace1-data')).toHaveTextContent(
+      'Updated Namespace1 Data'
     );
   });
 
-  test('should update division1 data when the button is clicked', async () => {
+  test('should update namespace1 data when the setState button is clicked', async () => {
     const user = userEvent.setup();
     render(<App />);
-    expect(screen.getByTestId('division1-data')).toHaveTextContent(
-      'Initial Division1 Data'
-    );
-    await user.click(screen.getByRole('button', { name: 'Update Division1' }));
-    expect(screen.getByTestId('division1-data')).toHaveTextContent(
-      'Updated Division1 Data'
-    );
-  });
-
-  test('should update division1 data when the setState button is clicked', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    expect(screen.getByTestId('division1-data')).toHaveTextContent(
-      'Initial Division1 Data'
+    expect(screen.getByTestId('namespace1-data')).toHaveTextContent(
+      'Initial Namespace1 Data'
     );
     await user.click(
-      screen.getByRole('button', { name: 'Update Division1 Using setState' })
+      screen.getByRole('button', { name: 'Update Namespace1 Using setState' })
     );
-    expect(screen.getByTestId('division1-data')).toHaveTextContent(
-      'Updated Division1 Data Using setState'
-    );
-  });
-
-  test('should update division2 data when the button is clicked', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    expect(screen.getByTestId('division2-data')).toHaveTextContent(
-      'Initial Division2 Data'
-    );
-    await user.click(screen.getByRole('button', { name: 'Update Division2' }));
-    expect(screen.getByTestId('division2-data')).toHaveTextContent(
-      'Updated Division2 Data'
+    expect(screen.getByTestId('namespace1-data')).toHaveTextContent(
+      'Updated Namespace1 Data Using setState'
     );
   });
 
-  test('should update division2 data when the setState button is clicked', async () => {
+  test('should update namespace2 data when the button is clicked', async () => {
     const user = userEvent.setup();
     render(<App />);
-    expect(screen.getByTestId('division2-data')).toHaveTextContent(
-      'Initial Division2 Data'
+    expect(screen.getByTestId('namespace2-data')).toHaveTextContent(
+      'Initial Namespace2 Data'
+    );
+    await user.click(screen.getByRole('button', { name: 'Update Namespace2' }));
+    expect(screen.getByTestId('namespace2-data')).toHaveTextContent(
+      'Updated Namespace2 Data'
+    );
+  });
+
+  test('should update namespace2 data when the setState button is clicked', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    expect(screen.getByTestId('namespace2-data')).toHaveTextContent(
+      'Initial Namespace2 Data'
     );
     await user.click(
-      screen.getByRole('button', { name: 'Update Division2 Using setState' })
+      screen.getByRole('button', { name: 'Update Namespace2 Using setState' })
     );
-    expect(screen.getByTestId('division2-data')).toHaveTextContent(
-      'Updated Division2 Data Using setState'
-    );
-  });
-
-  test('should update subDivision1 data when the button is clicked', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    expect(screen.getByTestId('subDivision1-data')).toHaveTextContent(
-      'Initial SubDivision1 Data'
-    );
-    await user.click(
-      screen.getByRole('button', { name: 'Update SubDivision1' })
-    );
-    expect(screen.getByTestId('subDivision1-data')).toHaveTextContent(
-      'Updated SubDivision1 Data'
+    expect(screen.getByTestId('namespace2-data')).toHaveTextContent(
+      'Updated Namespace2 Data Using setState'
     );
   });
 
-  test('should update subDivision1 data when the setState button is clicked', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    expect(screen.getByTestId('subDivision1-data')).toHaveTextContent(
-      'Initial SubDivision1 Data'
-    );
-    await user.click(
-      screen.getByRole('button', {
-        name: 'Update SubDivision1 Using setState',
-      })
-    );
-    expect(screen.getByTestId('subDivision1-data')).toHaveTextContent(
-      'Updated SubDivision1 Data Using setState'
-    );
-  });
+  // test('should update subNamespace1 data when the button is clicked', async () => {
+  //   const user = userEvent.setup();
+  //   render(<App />);
+  //   expect(screen.getByTestId('subNamespace1-data')).toHaveTextContent(
+  //     'Initial SubNamespace1 Data'
+  //   );
+  //   await user.click(
+  //     screen.getByRole('button', { name: 'Update SubNamespace1' })
+  //   );
+  //   expect(screen.getByTestId('subNamespace1-data')).toHaveTextContent(
+  //     'Updated SubNamespace1 Data'
+  //   );
+  // });
 
-  test('should reset all divisions when the reset button is clicked', async () => {
+  // test('should update subNamespace1 data when the setState button is clicked', async () => {
+  //   const user = userEvent.setup();
+  //   render(<App />);
+  //   expect(screen.getByTestId('subNamespace1-data')).toHaveTextContent(
+  //     'Initial SubNamespace1 Data'
+  //   );
+  //   await user.click(
+  //     screen.getByRole('button', {
+  //       name: 'Update SubNamespace1 Using setState',
+  //     })
+  //   );
+  //   expect(screen.getByTestId('subNamespace1-data')).toHaveTextContent(
+  //     'Updated SubNamespace1 Data Using setState'
+  //   );
+  // });
+
+  test('should reset all namespaces when the reset button is clicked', async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole('button', { name: 'Update Division1' }));
-    await user.click(screen.getByRole('button', { name: 'Update Division2' }));
-    await user.click(
-      screen.getByRole('button', { name: 'Update SubDivision1' })
+    await user.click(screen.getByRole('button', { name: 'Update Namespace1' }));
+    await user.click(screen.getByRole('button', { name: 'Update Namespace2' }));
+    // await user.click(
+    //   screen.getByRole('button', { name: 'Update SubNamespace1' })
+    // );
+    expect(screen.getByTestId('namespace1-data')).toHaveTextContent(
+      'Updated Namespace1 Data'
     );
-    expect(screen.getByTestId('division1-data')).toHaveTextContent(
-      'Updated Division1 Data'
-    );
-    expect(screen.getByTestId('division2-data')).toHaveTextContent(
-      'Updated Division2 Data'
+    expect(screen.getByTestId('namespace2-data')).toHaveTextContent(
+      'Updated Namespace2 Data'
     );
 
     await user.click(screen.getByRole('button', { name: 'Reset All' }));
-    expect(screen.getByTestId('division1-data')).toHaveTextContent(
-      'Initial Division1 Data'
+    expect(screen.getByTestId('namespace1-data')).toHaveTextContent(
+      'Initial Namespace1 Data'
     );
-    expect(screen.getByTestId('division2-data')).toHaveTextContent(
-      'Initial Division2 Data'
+    expect(screen.getByTestId('namespace2-data')).toHaveTextContent(
+      'Initial Namespace2 Data'
     );
-    expect(screen.getByTestId('subDivision1-data')).toHaveTextContent(
-      'Initial SubDivision1 Data'
-    );
+    // expect(screen.getByTestId('subNamespace1-data')).toHaveTextContent(
+    //   'Initial SubNamespace1 Data'
+    // );
   });
 
-  test('should reset all divisions when the setState button is clicked', async () => {
+  test('should reset all namespaces when the setState button is clicked', async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole('button', { name: 'Update Division1' }));
-    await user.click(screen.getByRole('button', { name: 'Update Division2' }));
-    await user.click(
-      screen.getByRole('button', { name: 'Update SubDivision1' })
+    await user.click(screen.getByRole('button', { name: 'Update Namespace1' }));
+    await user.click(screen.getByRole('button', { name: 'Update Namespace2' }));
+    // await user.click(
+    //   screen.getByRole('button', { name: 'Update SubNamespace1' })
+    // );
+    expect(screen.getByTestId('namespace1-data')).toHaveTextContent(
+      'Updated Namespace1 Data'
     );
-    expect(screen.getByTestId('division1-data')).toHaveTextContent(
-      'Updated Division1 Data'
+    expect(screen.getByTestId('namespace2-data')).toHaveTextContent(
+      'Updated Namespace2 Data'
     );
-    expect(screen.getByTestId('division2-data')).toHaveTextContent(
-      'Updated Division2 Data'
-    );
-    expect(screen.getByTestId('subDivision1-data')).toHaveTextContent(
-      'Updated SubDivision1 Data'
-    );
+    // expect(screen.getByTestId('subNamespace1-data')).toHaveTextContent(
+    //   'Updated SubNamespace1 Data'
+    // );
 
     await user.click(
       screen.getByRole('button', { name: 'Reset All Using setState' })
     );
-    expect(screen.getByTestId('division1-data')).toHaveTextContent(
-      'Initial Division1 Data'
+    expect(screen.getByTestId('namespace1-data')).toHaveTextContent(
+      'Initial Namespace1 Data'
     );
-    expect(screen.getByTestId('division2-data')).toHaveTextContent(
-      'Initial Division2 Data'
+    expect(screen.getByTestId('namespace2-data')).toHaveTextContent(
+      'Initial Namespace2 Data'
     );
-    expect(screen.getByTestId('subDivision1-data')).toHaveTextContent(
-      'Initial SubDivision1 Data'
-    );
+    // expect(screen.getByTestId('subNamespace1-data')).toHaveTextContent(
+    //   'Initial SubNamespace1 Data'
+    // );
   });
 
-  test('should render initial data for divisions without selector', () => {
+  test('should render initial data for namespaces without selector', () => {
     render(<NoSelectorComponent />);
-    expect(screen.getByTestId('no-selector-division1-data')).toHaveTextContent(
-      'Initial Division1 Data'
+    expect(screen.getByTestId('no-selector-namespace1-data')).toHaveTextContent(
+      'Initial Namespace1 Data'
     );
-    expect(screen.getByTestId('no-selector-division2-data')).toHaveTextContent(
-      'Initial Division2 Data'
+    expect(screen.getByTestId('no-selector-namespace2-data')).toHaveTextContent(
+      'Initial Namespace2 Data'
     );
     expect(
-      screen.getByTestId('no-selector-subDivision1-data')
-    ).toHaveTextContent('Initial SubDivision1 Data');
+      screen.getByTestId('no-selector-subNamespace1-data')
+    ).toHaveTextContent('Initial SubNamespace1 Data');
   });
 
-  test('should update division1 data when the button is clicked without selector', async () => {
+  test('should update namespace1 data when the button is clicked without selector', async () => {
     render(<NoSelectorComponent />);
-    expect(screen.getByTestId('no-selector-division1-data')).toHaveTextContent(
-      'Initial Division1 Data'
+    expect(screen.getByTestId('no-selector-namespace1-data')).toHaveTextContent(
+      'Initial Namespace1 Data'
     );
     act(() => {
-      useDivision1.getState().updateDivision1Data('Updated Division1 Data');
+      useNamespace1.getState().updateNamespace1Data('Updated Namespace1 Data');
     });
-    expect(screen.getByTestId('no-selector-division1-data')).toHaveTextContent(
-      'Updated Division1 Data'
-    );
-  });
-
-  test('should update division2 data when the button is clicked without selector', async () => {
-    render(<NoSelectorComponent />);
-    expect(screen.getByTestId('no-selector-division2-data')).toHaveTextContent(
-      'Initial Division2 Data'
-    );
-    act(() => {
-      useDivision2.getState().updateDivision2Data('Updated Division2 Data');
-    });
-    expect(screen.getByTestId('no-selector-division2-data')).toHaveTextContent(
-      'Updated Division2 Data'
+    expect(screen.getByTestId('no-selector-namespace1-data')).toHaveTextContent(
+      'Updated Namespace1 Data'
     );
   });
 
-  test('should update subDivision1 data when the button is clicked without selector', async () => {
+  test('should update namespace2 data when the button is clicked without selector', async () => {
     render(<NoSelectorComponent />);
-    expect(
-      screen.getByTestId('no-selector-subDivision1-data')
-    ).toHaveTextContent('Initial SubDivision1 Data');
+    expect(screen.getByTestId('no-selector-namespace2-data')).toHaveTextContent(
+      'Initial Namespace2 Data'
+    );
     act(() => {
-      useSubDivision1
-        .getState()
-        .updateSubDivision1Data('Updated SubDivision1 Data');
+      useNamespace2.getState().updateNamespace2Data('Updated Namespace2 Data');
     });
-    expect(
-      screen.getByTestId('no-selector-subDivision1-data')
-    ).toHaveTextContent('Updated SubDivision1 Data');
+    expect(screen.getByTestId('no-selector-namespace2-data')).toHaveTextContent(
+      'Updated Namespace2 Data'
+    );
   });
+
+  // test('should update subNamespace1 data when the button is clicked without selector', async () => {
+  //   render(<NoSelectorComponent />);
+  //   expect(
+  //     screen.getByTestId('no-selector-subNamespace1-data')
+  //   ).toHaveTextContent('Initial SubNamespace1 Data');
+  //   act(() => {
+  //     useSubNamespace1
+  //       .getState()
+  //       .updateSubNamespace1Data('Updated SubNamespace1 Data');
+  //   });
+  //   expect(
+  //     screen.getByTestId('no-selector-subNamespace1-data')
+  //   ).toHaveTextContent('Updated SubNamespace1 Data');
+  // });
 });

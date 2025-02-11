@@ -12,6 +12,13 @@ import {
   Namespaced,
   PrefixObject,
 } from './types';
+import {
+  useDebugValue,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 
 export function transformStateCreatorArgs<
   N extends string,
@@ -153,6 +160,21 @@ function spreadTransformedNamespaces<
   return spreadNamespaces(namespaces, transformCallback(...args)) as any;
 }
 
+const identity = <T,>(value: T) => value;
+
+export function useStore<TState, StateSlice>(
+  api: StoreApi<TState>,
+  selector: (state: TState) => StateSlice = identity as any
+) {
+  const slice = useSyncExternalStore(
+    api.subscribe,
+    () => selector(api.getState()),
+    () => selector(api.getInitialState())
+  );
+  useDebugValue(slice);
+  return slice;
+}
+
 /**
  * Helper method for creating a namespace hook.
  * @param useStore The parent store hook
@@ -164,26 +186,29 @@ function spreadTransformedNamespaces<
  * const useSubNamespace = getNamespaceHook(useNamespace, subNamespace);
  */
 export function getNamespaceHook<Name extends string, Store extends object>(
-  useStore: UseBoundStore<StoreApi<Store>>,
+  originStore: UseBoundStore<StoreApi<Store>>,
   namespace: Namespace<FilterByPrefix<Name, Store>, Name>
 ): UseBoundStore<StoreApi<FilterByPrefix<Name, Store>>> {
   type T = FilterByPrefix<Name, Store>;
 
   type BoundStore = UseBoundStore<StoreApi<T>>;
 
+  // const originHook = ((selector?: any) =>
+  //   useStore(api, selector)) as UseBoundStore<StoreApi<Store>>;
+
   const hook = ((selector) => {
-    return useStore((state) => {
+    return originStore((state) => {
       const unprefixState = getUnprefixedObject(namespace.name, state);
       return selector ? selector(unprefixState) : unprefixState;
     });
   }) as BoundStore;
 
   const get: BoundStore['getState'] = () => {
-    const state = useStore.getState();
+    const state = originStore.getState();
     return getUnprefixedObject(namespace.name, state);
   };
   const set: BoundStore['setState'] = (state) => {
-    useStore.setState((currentState) => {
+    originStore.setState((currentState) => {
       const unprefixedState = getUnprefixedObject(namespace.name, currentState);
       const updatedState =
         typeof state === 'function' ? state(unprefixedState) : state;
@@ -192,7 +217,7 @@ export function getNamespaceHook<Name extends string, Store extends object>(
   };
 
   const subscribe: BoundStore['subscribe'] = (listener) => {
-    return useStore.subscribe((newState, oldState) => {
+    return originStore.subscribe((newState, oldState) => {
       listener(
         getUnprefixedObject(namespace.name, newState),
         getUnprefixedObject(namespace.name, oldState)
@@ -201,14 +226,14 @@ export function getNamespaceHook<Name extends string, Store extends object>(
   };
 
   const getInitialState: BoundStore['getInitialState'] = () => {
-    return getUnprefixedObject(namespace.name, useStore.getInitialState());
+    return getUnprefixedObject(namespace.name, originStore.getInitialState());
   };
 
   hook.getInitialState = getInitialState;
   hook.getState = get;
   hook.setState = set;
   hook.subscribe = subscribe;
-  hook.destroy = useStore.destroy;
+  hook.destroy = originStore.destroy;
 
   return hook;
 }
@@ -343,7 +368,18 @@ export function partializeNamespaces<
 
 type Write<T, U> = Omit<T, keyof U> & U;
 type WithNamespace<S, A> = S extends { getState: () => infer T }
-  ? Write<S, A>
+  ? A extends Namespace[]
+    ? Write<
+        S,
+        {
+          // namespaces: {
+          //   [N in A[number] as N['name']]: UseBoundStore<
+          //     StoreApi<FilterByPrefix<N['name'], T>>
+          //   >;
+          // };
+        }
+      >
+    : never
   : never;
 
 declare module 'zustand/vanilla' {
@@ -352,44 +388,102 @@ declare module 'zustand/vanilla' {
   }
 }
 
-type NameSpaceMutator = <
-  T extends object,
-  Namespaces extends readonly Namespace[],
-  Option extends ExcludeByPrefix<Namespaces[number]['name'], T>,
-  Result extends Option & Namespaced<Namespaces>,
+export function namespaced<Namespaces extends readonly Namespace[]>(
+  ...namespaces: Namespaces
+): <
+  T,
+  Excluded extends ExcludeByPrefix<Namespaces[number]['name'], T>,
+  Result extends Excluded & Namespaced<Namespaces>,
   Mps extends [StoreMutatorIdentifier, unknown][] = [],
   Mcs extends [StoreMutatorIdentifier, unknown][] = []
 >(
-  namespaces: Namespaces,
-  creator?: StateCreator<Result, [...Mps, ['zustand-namespace', []]], Mcs>
-) => (
-  creator: StateCreator<T, [...Mps, ['zustand-namespace', unknown]], Mcs>
-) => StateCreator<T, Mps, [['zustand-namespace', []], ...Mcs]>;
+  creator: StateCreator<
+    Result,
+    [...Mps, ['zustand-namespace', unknown]],
+    Mcs,
+    Excluded
+  >
+) => StateCreator<
+  Result,
+  Mps,
+  [['zustand-namespace', Namespaces], ...Mcs],
+  Result
+> {
+  //@ts-ignore
+  return (creator) => {
+    return (...args) => {
+      const [set, get, api] = args;
+      const apiWithNamespace = api as WithNamespace<typeof api, Namespaces>;
+      // apiWithNamespace.namespaces = {};
+      // for (const namespace of namespaces) {
+      //   apiWithNamespace.namespaces[namespace.name] = getNamespaceHook2(
+      //     api,
+      //     namespace
+      //   );
+      // }
 
-export const namespace = namespaceImplementation as unknown as NameSpaceMutator;
-/**
- * Method used to divide namespaces into a parent creator method.
- * @param creator The parent creator method
- * @param namespaces The namespaces
- * @returns A new creator method that includes the namespaces
- */
-function namespaceImplementation<
-  T extends object,
-  Namespaces extends readonly Namespace[],
-  Option extends ExcludeByPrefix<Namespaces[number]['name'], T>,
-  Result extends Option & Namespaced<Namespaces>,
-  Mis extends [StoreMutatorIdentifier, unknown][] = [],
-  Mos extends [StoreMutatorIdentifier, unknown][] = []
->(
-  namespaces: Namespaces,
-  creator?: StateCreator<Result, Mis, Mos, Option>
-): StateCreator<Result, Mis, Mos, Result> {
-  return (...args) => {
-    return {
-      ...spreadTransformedNamespaces(namespaces, ...args),
-      ...creator?.(
-        ...(args as Parameters<StateCreator<Result, Mis, Mos, Option>>)
-      ),
-    } as Result;
+      return {
+        ...spreadTransformedNamespaces(namespaces, set, get, apiWithNamespace),
+        //@ts-ignore
+        ...creator?.(...args),
+      };
+    };
   };
 }
+
+// export function getNamespaceHook2<Name extends string, Store extends object>(
+//   api: StoreApi<Store>,
+//   namespace: Namespace<FilterByPrefix<Name, Store>, Name>
+// ): UseBoundStore<StoreApi<FilterByPrefix<Name, Store>>> {
+//   type T = FilterByPrefix<Name, Store>;
+
+//   type BoundStore = UseBoundStore<StoreApi<T>>;
+
+//   const originHook = ((selector?: any) =>
+//     useStore(api, selector)) as UseBoundStore<StoreApi<Store>>;
+
+//   const hook = ((selector) => {
+//     return originHook((state) => {
+//       const unprefixState = getUnprefixedObject(namespace.name, state);
+//       return selector ? selector(unprefixState) : unprefixState;
+//     });
+//   }) as BoundStore;
+
+//   const updatedApi: Partial<StoreApi<T>> = {
+//     getState: () => {
+//       const state = api.getState();
+//       return getUnprefixedObject(namespace.name, state);
+//     },
+//   };
+
+//   Object.assign(hook, updatedApi);
+//   // const set: BoundStore['setState'] = (state) => {
+//   //   originStore.setState((currentState) => {
+//   //     const unprefixedState = getUnprefixedObject(namespace.name, currentState);
+//   //     const updatedState =
+//   //       typeof state === 'function' ? state(unprefixedState) : state;
+//   //     return getPrefixedObject(namespace.name, updatedState) as Store;
+//   //   });
+//   // };
+
+//   // const subscribe: BoundStore['subscribe'] = (listener) => {
+//   //   return originStore.subscribe((newState, oldState) => {
+//   //     listener(
+//   //       getUnprefixedObject(namespace.name, newState),
+//   //       getUnprefixedObject(namespace.name, oldState)
+//   //     );
+//   //   });
+//   // };
+
+//   // const getInitialState: BoundStore['getInitialState'] = () => {
+//   //   return getUnprefixedObject(namespace.name, originStore.getInitialState());
+//   // };
+
+//   // hook.getInitialState = getInitialState;
+//   // hook.getState = get;
+//   // hook.setState = set;
+//   // hook.subscribe = subscribe;
+//   // hook.destroy = originStore.destroy;
+
+//   return hook;
+// }

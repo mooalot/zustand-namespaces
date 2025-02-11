@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { getNamespaceHook, namespace, createNamespace } from '../src/utils';
+import { namespaced, createNamespace, getNamespaceHook } from '../src/utils';
 
 const namespaceA = createNamespace(() => ({
   name: 'namespaceA',
@@ -15,23 +15,26 @@ const namespaceB = createNamespace(() => ({
   }),
 }));
 
-const namespace = createNamespace(namespaceA, namespaceB);
+const namespace = namespaced(namespaceA, namespaceB);
 
-const useStore = create(namespace([namespaceA, namespaceB]));
+const useStore = create(
+  namespace(() => ({
+    mainData: 'data',
+  }))
+);
 
-export const useDivision1 = getNamespaceHook(useStore, namespaceA);
+const useNamespaceA = getNamespaceHook(useStore, namespaceA);
+const useNamespaceB = getNamespaceHook(useStore, namespaceB);
 
-export const useDivision2 = getNamespaceHook(useStore, namespaceB);
+useStore((state) => state.namespaceA_dataInNamespaceA);
+useStore((state) => state.namespaceB_dataInNamespaceB);
+useStore((state) => state.mainData);
+useStore.getState;
+useStore.setState;
 
-// useStore((state) => state.division1_dataInDivision1);
-// useStore((state) => state.division2_dataInDivision2);
-// useStore((state) => state.mainData);
-// useStore.getState;
-// useStore.setState;
-
-// useDivision1((state) => state.dataInDivision1);
-// useDivision1.getState;
-// useDivision1.setState;
-// useDivision2((state) => state.dataInDivision2);
-// useDivision2.getState;
-// useDivision2.setState;
+useNamespaceA((state) => state.dataInNamespaceA);
+useNamespaceA.getState;
+useNamespaceA.setState;
+useNamespaceB((state) => state.dataInNamespaceB);
+useNamespaceB.getState;
+useNamespaceB.setState;

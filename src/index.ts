@@ -1,5 +1,5 @@
 export {
-  namespace,
+  namespaced,
   createNamespace,
   getNamespaceHook,
   getNamespaceHooks,
