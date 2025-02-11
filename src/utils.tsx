@@ -346,21 +346,23 @@ export function partializeNamespaces<
   );
 }
 
-type Write<T, U> = Omit<T, keyof U> & U;
-type WithNamespace<S, A> = S extends { getState: () => infer T }
-  ? A extends Namespace[]
-    ? Write<
-        S,
-        {
-          namespaces: {
-            [N in A[number] as N['name']]: () => UseBoundStore<
-              StoreApi<FilterByPrefix<N['name'], T>>
-            >;
-          };
-        }
-      >
-    : never
-  : never;
+// type Write<T, U> = Omit<T, keyof U> & U;
+//eslint-disable-next-line
+type WithNamespace<S, A> = S;
+//  extends { getState: () => infer T }
+//   ? A extends Namespace[]
+//     ? Write<
+//         S,
+//         {
+//           namespaces: {
+//             [N in A[number] as N['name']]: () => UseBoundStore<
+//               StoreApi<FilterByPrefix<N['name'], T>>
+//             >;
+//           };
+//         }
+//       >
+//     : never
+//   : never;
 
 declare module 'zustand/vanilla' {
   interface StoreMutators<S, A> {
@@ -377,7 +379,7 @@ export function namespaced<Namespaces extends readonly Namespace[]>(
   Mps extends [StoreMutatorIdentifier, unknown][] = [],
   Mcs extends [StoreMutatorIdentifier, unknown][] = []
 >(
-  creator: StateCreator<
+  creator?: StateCreator<
     Result,
     [...Mps, ['zustand-namespace', unknown]],
     Mcs,

@@ -23,10 +23,8 @@ const useStore = create(
   }))
 );
 
-//eslint-disable-next-line
-const useNamespaceA = getNamespaceHook(useStore, namespaceA);
-//eslint-disable-next-line
-const useNamespaceB = getNamespaceHook(useStore, namespaceB);
+export const useNamespaceA = getNamespaceHook(useStore, namespaceA);
+export const useNamespaceB = getNamespaceHook(useStore, namespaceB);
 
 // useStore((state) => state.namespaceA_dataInNamespaceA);
 // useStore((state) => state.namespaceB_dataInNamespaceB);
