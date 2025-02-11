@@ -1,322 +1,327 @@
-// import { expect, test, describe } from 'vitest';
-// import { expectType } from 'ts-expect';
-// import type { TypeEqual } from 'ts-expect';
+import { expect, test, describe } from 'vitest';
+import { expectType } from 'ts-expect';
+import type { TypeEqual } from 'ts-expect';
 
-// import {
-//   transformStateCreatorArgs,
-//   getPrefixedObject,
-//   getUnprefixedObject,
-//   divide,
-//   divisionHook,
-//   divisionHooks,
-//   stateToDivision,
-//   divisionToState,
-//   createDivision,
-// } from '../src/utils';
-// import { StoreApi, StateCreator, create, UseBoundStore } from 'zustand';
-// import { FilterByPrefix, PrefixObject, Division } from '../src/types';
+import {
+  transformStateCreatorArgs,
+  getPrefixedObject,
+  getUnprefixedObject,
+  namespaced,
+  createNamespace,
+  getNamespaceHook,
+  getNamespaceHooks,
+  toNamespace,
+  fromNamespace,
+} from '../src/utils';
+import { StoreApi, StateCreator, create, UseBoundStore } from 'zustand';
+import { FilterByPrefix, Namespace, PrefixObject } from '../src/types';
 
-// type State = {
-//   user_name: string;
-//   user_age: number;
-//   admin_level: number;
-// };
+type State = {
+  user_name: string;
+  user_age: number;
+  admin_level: number;
+};
 
-// type UserDivision = Division<FilterByPrefix<'user', State>, 'user'>;
+type UserNamespace = Namespace<FilterByPrefix<'user', State>, 'user'>;
 
-// type AdminDivision = {
-//   prefix: 'admin';
-//   creator: StateCreator<FilterByPrefix<'admin', State>>;
-// };
+type AdminNamespace = Namespace<FilterByPrefix<'admin', State>, 'admin'>;
 
-// describe('transformStateCreatorArgs', () => {
-//   test('should transform state creator arguments', () => {
-//     const mockDivision: UserDivision = {
-//       prefix: 'user',
-//       creator: () => ({
-//         name: 'Alice',
-//         age: 25,
-//       }),
-//     };
+describe('transformStateCreatorArgs', () => {
+  test('should transform state creator arguments', () => {
+    const mockNamespace: UserNamespace = {
+      name: 'user',
+      creator: () => ({
+        name: 'Alice',
+        age: 25,
+      }),
+    };
 
-//     const originalArgs: Parameters<StateCreator<State>> = [
-//       () => {},
-//       () => ({} as State),
-//       {} as StoreApi<State>,
-//     ];
+    const originalArgs: Parameters<StateCreator<State>> = [
+      () => {},
+      () => ({} as State),
+      {} as StoreApi<State>,
+    ];
 
-//     const transformedArgs = transformStateCreatorArgs(
-//       mockDivision,
-//       ...originalArgs
-//     );
+    const transformedArgs = transformStateCreatorArgs(
+      mockNamespace,
+      ...originalArgs
+    );
 
-//     expect(transformedArgs).toBeDefined();
-//     expectType<
-//       TypeEqual<typeof transformedArgs, Parameters<typeof mockDivision.creator>>
-//     >(true);
-//   });
-// });
+    expect(transformedArgs).toBeDefined();
+    expectType<
+      TypeEqual<
+        typeof transformedArgs,
+        Parameters<typeof mockNamespace.creator>
+      >
+    >(true);
+  });
+});
 
-// describe('getPrefixedObject', () => {
-//   test('should prefix object keys', () => {
-//     const obj = { name: 'Alice', age: 25 };
-//     const prefixedObj = getPrefixedObject('user', obj);
+describe('getPrefixedObject', () => {
+  test('should prefix object keys', () => {
+    const obj = { name: 'Alice', age: 25 };
+    const prefixedObj = getPrefixedObject('user', obj);
 
-//     expect(prefixedObj).toEqual({
-//       user_name: 'Alice',
-//       user_age: 25,
-//     });
+    expect(prefixedObj).toEqual({
+      user_name: 'Alice',
+      user_age: 25,
+    });
 
-//     expectType<TypeEqual<typeof prefixedObj, PrefixObject<'user', typeof obj>>>(
-//       true
-//     );
-//   });
-// });
+    expectType<TypeEqual<typeof prefixedObj, PrefixObject<'user', typeof obj>>>(
+      true
+    );
+  });
+});
 
-// describe('getUnprefixedObject', () => {
-//   test('should remove prefix from object keys', () => {
-//     const obj = { user_name: 'Alice', user_age: 25 };
-//     const unprefixedObj = getUnprefixedObject('user', obj);
+describe('getUnprefixedObject', () => {
+  test('should remove prefix from object keys', () => {
+    const obj = { user_name: 'Alice', user_age: 25 };
+    const unprefixedObj = getUnprefixedObject('user', obj);
 
-//     expect(unprefixedObj).toEqual({
-//       name: 'Alice',
-//       age: 25,
-//     });
+    expect(unprefixedObj).toEqual({
+      name: 'Alice',
+      age: 25,
+    });
 
-//     expectType<
-//       TypeEqual<typeof unprefixedObj, FilterByPrefix<'user', typeof obj>>
-//     >(true);
-//   });
-// });
+    expectType<
+      TypeEqual<typeof unprefixedObj, FilterByPrefix<'user', typeof obj>>
+    >(true);
+  });
+});
 
-// describe('divide', () => {
-//   test('should create a state creator with divisions', () => {
-//     const userDivision: UserDivision = {
-//       prefix: 'user',
-//       creator: () => ({
-//         name: 'Alice',
-//         age: 25,
-//       }),
-//     };
+describe('divide', () => {
+  test('should create a state creator with namespaces', () => {
+    const userNamespace: UserNamespace = {
+      name: 'user',
+      creator: () => ({
+        name: 'Alice',
+        age: 25,
+      }),
+    };
 
-//     const adminDivision: AdminDivision = {
-//       prefix: 'admin',
-//       creator: () => ({
-//         level: 1,
-//       }),
-//     };
+    const adminNamespace: AdminNamespace = {
+      name: 'admin',
+      creator: () => ({
+        level: 1,
+      }),
+    };
 
-//     const combinedCreator = create(divide([userDivision, adminDivision]));
+    const combinedCreator = create(
+      namespaced(userNamespace, adminNamespace)(() => ({}))
+    );
 
-//     expectType<
-//       StateCreator<
-//         FilterByPrefix<'user', State> & FilterByPrefix<'admin', State>
-//       >
-//     >(combinedCreator);
-//   });
+    expectType<
+      StateCreator<
+        FilterByPrefix<'user', State> & FilterByPrefix<'admin', State>
+      >
+    >(combinedCreator);
+  });
 
-//   test('the set method inside divide s hould be of type SetState', () => {
-//     const userDivision: UserDivision = {
-//       prefix: 'user',
-//       creator: () => ({
-//         name: 'Alice',
-//         age: 25,
-//       }),
-//     };
+  test('the set method inside divide s hould be of type SetState', () => {
+    const userNamespace: UserNamespace = {
+      name: 'user',
+      creator: () => ({
+        name: 'Alice',
+        age: 25,
+      }),
+    };
 
-//     const adminDivision: AdminDivision = {
-//       prefix: 'admin',
-//       creator: () => ({
-//         level: 1,
-//       }),
-//     };
+    const adminNamespace: AdminNamespace = {
+      name: 'admin',
+      creator: () => ({
+        level: 1,
+      }),
+    };
 
-//     create(
-//       divide([userDivision, adminDivision], (set) => {
-//         expectType<StoreApi<State>['setState']>(set);
-//         return {};
-//       })
-//     );
-//   });
+    create(
+      namespaced(
+        userNamespace,
+        adminNamespace
+      )((set) => {
+        expectType<StoreApi<State>['setState']>(set);
+        return {};
+      })
+    );
+  });
 
-//   test('should infer the divide type', () => {
-//     const userDivision = createDivision(() => ({
-//       prefix: 'user',
-//       creator: () => ({
-//         name: 'Alice',
-//         age: 25,
-//       }),
-//     }));
+  test('should infer the divide type', () => {
+    const userNamespace = createNamespace(() => ({
+      name: 'user',
+      creator: () => ({
+        name: 'Alice',
+        age: 25,
+      }),
+    }));
 
-//     const adminDivision = createDivision(() => ({
-//       prefix: 'admin',
-//       creator: () => ({
-//         level: 1,
-//       }),
-//     }));
+    const adminNamespace = createNamespace(() => ({
+      name: 'admin',
+      creator: () => ({
+        level: 1,
+      }),
+    }));
 
-//     const useStore = create(
-//       divide([userDivision(), adminDivision()], () => ({
-//         admin_level: 1,
-//       }))
-//     );
+    const useStore = create(
+      namespaced(
+        userNamespace,
+        adminNamespace
+      )(() => ({
+        admin_level: 1,
+      }))
+    );
 
-//     expectType<UseBoundStore<StoreApi<State>>>(useStore);
-//   });
-// });
+    expectType<UseBoundStore<StoreApi<State>>>(useStore);
+  });
+});
 
-// describe('divisionHook', () => {
-//   test('should create a division hook', () => {
-//     const userDivision: UserDivision = {
-//       prefix: 'user',
-//       creator: () => ({
-//         name: 'Alice',
-//         age: 25,
-//       }),
-//     };
+describe('namespaceHook', () => {
+  test('should create a namespace hook', () => {
+    const userNamespace: UserNamespace = {
+      name: 'user',
+      creator: () => ({
+        name: 'Alice',
+        age: 25,
+      }),
+    };
 
-//     const useStore = create<State>(
-//       divide([userDivision], () => ({
-//         admin_level: 1,
-//       }))
-//     );
+    const useStore = create<State>()(
+      namespaced(userNamespace)(() => ({
+        admin_level: 1,
+      }))
+    );
 
-//     const hook = divisionHook(useStore, userDivision);
+    const hook = getNamespaceHook(useStore, userNamespace);
 
-//     expect(hook).toBeDefined();
-//     expectType<UseBoundStore<StoreApi<FilterByPrefix<'user', State>>>>(hook);
-//   });
-// });
+    expect(hook).toBeDefined();
+    expectType<UseBoundStore<StoreApi<FilterByPrefix<'user', State>>>>(hook);
+  });
+});
 
-// describe('divisionHooks', () => {
-//   test('should create multiple division hooks', () => {
-//     const userDivision: UserDivision = {
-//       prefix: 'user',
-//       creator: () => ({
-//         name: 'Alice',
-//         age: 25,
-//       }),
-//     };
+describe('namespaceHooks', () => {
+  test('should create multiple namespace hooks', () => {
+    const userNamespace: UserNamespace = {
+      name: 'user',
+      creator: () => ({
+        name: 'Alice',
+        age: 25,
+      }),
+    };
 
-//     const adminDivision: AdminDivision = {
-//       prefix: 'admin',
-//       creator: () => ({
-//         level: 1,
-//       }),
-//     };
+    const adminNamespace: AdminNamespace = {
+      name: 'admin',
+      creator: () => ({
+        level: 1,
+      }),
+    };
 
-//     const useStore = create<State>(
-//       divide([userDivision, adminDivision], () => ({
-//         admin_level: 1,
-//       }))
-//     );
+    const useStore = create<State>()(
+      namespaced(
+        userNamespace,
+        adminNamespace
+      )(() => ({
+        admin_level: 1,
+      }))
+    );
 
-//     const [useUser, useAdmin] = divisionHooks(
-//       useStore,
-//       userDivision,
-//       adminDivision
-//     );
+    const [useUser, useAdmin] = getNamespaceHooks(
+      useStore,
+      userNamespace,
+      adminNamespace
+    );
 
-//     expect(useUser).toBeDefined();
-//     expect(useAdmin).toBeDefined();
+    expect(useUser).toBeDefined();
+    expect(useAdmin).toBeDefined();
 
-//     expectType<UseBoundStore<StoreApi<FilterByPrefix<'user', State>>>>(useUser);
-//     expectType<UseBoundStore<StoreApi<FilterByPrefix<'admin', State>>>>(
-//       useAdmin
-//     );
-//   });
-// });
+    expectType<UseBoundStore<StoreApi<FilterByPrefix<'user', State>>>>(useUser);
+    expectType<UseBoundStore<StoreApi<FilterByPrefix<'admin', State>>>>(
+      useAdmin
+    );
+  });
+});
 
-// describe('stateToDivision', () => {
-//   test('should extract division from state', () => {
-//     const userDivision: UserDivision = {
-//       prefix: 'user',
-//       creator: () => ({
-//         name: 'Alice',
-//         age: 25,
-//       }),
-//     };
+describe('stateToNamespace', () => {
+  test('should extract namespace from state', () => {
+    const userNamespace: UserNamespace = {
+      name: 'user',
+      creator: () => ({
+        name: 'Alice',
+        age: 25,
+      }),
+    };
 
-//     const state: State = {
-//       user_name: 'Alice',
-//       user_age: 25,
-//       admin_level: 1,
-//     };
+    const state: State = {
+      user_name: 'Alice',
+      user_age: 25,
+      admin_level: 1,
+    };
 
-//     const division = stateToDivision(userDivision, state);
+    const namespace = toNamespace(userNamespace, state);
 
-//     expect(division).toEqual({
-//       name: 'Alice',
-//       age: 25,
-//     });
+    expect(namespace).toEqual({
+      name: 'Alice',
+      age: 25,
+    });
 
-//     expectType<FilterByPrefix<'user', State>>(division);
-//   });
-// });
+    expectType<FilterByPrefix<'user', State>>(namespace);
+  });
+});
 
-// describe('divisionToState', () => {
-//   test('should add prefix to division state', () => {
-//     const userDivision: UserDivision = {
-//       prefix: 'user',
+describe('namespaceToState', () => {
+  test('should add prefix to namespace state', () => {
+    const userNamespace: UserNamespace = {
+      name: 'user',
 
-//       creator: () => ({
-//         name: 'Alice',
-//         age: 25,
-//       }),
-//     };
+      creator: () => ({
+        name: 'Alice',
+        age: 25,
+      }),
+    };
 
-//     const state = { name: 'Alice', age: 25 };
+    const state = { name: 'Alice', age: 25 };
 
-//     const divisiondState = divisionToState(userDivision, state);
+    const namespacedState = fromNamespace(userNamespace, state);
 
-//     expect(divisiondState).toEqual({
-//       user_name: 'Alice',
-//       user_age: 25,
-//     });
+    expect(namespacedState).toEqual({
+      user_name: 'Alice',
+      user_age: 25,
+    });
 
-//     expectType<PrefixObject<'user', typeof state>>(divisiondState);
-//   });
-// });
+    expectType<PrefixObject<'user', typeof state>>(namespacedState);
+  });
+});
 
-// describe('createDivision', () => {
-//   test('should create a division definition', () => {
-//     const createTestDivision = createDivision<{ key: string }>()(() => ({
-//       prefix: 'test',
-//       creator: () => ({
-//         key: 'value',
-//       }),
-//     }));
+describe('createNamespace', () => {
+  test('should create a namespace definition', () => {
+    const testNamespace = createNamespace<{ key: string }>()(() => ({
+      name: 'test',
+      creator: () => ({
+        key: 'value',
+      }),
+    }));
 
-//     const result = createTestDivision();
+    expect(testNamespace).toBeDefined();
+    expect(testNamespace.name).toBe('test');
+    expect(testNamespace.creator).toBeDefined();
+  });
 
-//     expect(result).toBeDefined();
-//     expectType<ReturnType<typeof createTestDivision>>(result);
+  test('should create a namespace definition with options', () => {
+    const testNamespace = createNamespace<
+      { key: string },
+      { option: string }
+    >()(() => ({
+      name: 'test',
+      creator: () => ({
+        key: 'value',
+      }),
+      options: {
+        option: 'value',
+      },
+    }));
 
-//     expect(result.prefix).toBe('test');
-//     expect(result.creator).toBeDefined();
-//   });
+    expect(testNamespace).toBeDefined();
+    expectType<typeof testNamespace>(testNamespace);
 
-//   test('should create a division definition with options', () => {
-//     const createTestDivision = createDivision<
-//       { key: string },
-//       { option: string }
-//     >()(() => ({
-//       prefix: 'test',
-//       creator: () => ({
-//         key: 'value',
-//       }),
-//       options: {
-//         option: 'value',
-//       },
-//     }));
-
-//     const result = createTestDivision();
-
-//     expect(result).toBeDefined();
-//     expectType<ReturnType<typeof createTestDivision>>(result);
-
-//     expect(result.prefix).toBe('test');
-//     expect(result.creator).toBeDefined();
-//     expect(result.options).toEqual({ option: 'value' });
-//   });
-// });
+    expect(testNamespace.name).toBe('test');
+    expect(testNamespace.creator).toBeDefined();
+    expect(testNamespace.options).toEqual({ option: 'value' });
+  });
+});
