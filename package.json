@@ -1,10 +1,10 @@
 {
-  "name": "zustand-divisions",
+  "name": "zustand-namespace",
   "version": "0.1.12",
   "author": "Gabriel Saunders",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mooalot/zustand-divisions"
+    "url": "https://github.com/mooalot/zustand-namespace"
   },
   "type": "module",
   "main": "./dist/index.umd.js",
@@ -22,7 +22,7 @@
   "keywords": [
     "react",
     "zustand",
-    "divisions",
+    "namespace",
     "slices"
   ],
   "scripts": {

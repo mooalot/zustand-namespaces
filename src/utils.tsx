@@ -1,27 +1,27 @@
 import {
-  ExcludeByPrefix,
-  FilterByPrefix,
-  IncludeByPrefix,
-  PrefixObject,
-  Division,
-  Divide,
-} from './types';
-import {
   StateCreator,
   StoreApi,
   StoreMutatorIdentifier,
   UseBoundStore,
 } from 'zustand';
+import {
+  ExcludeByPrefix,
+  FilterByPrefix,
+  IncludeByPrefix,
+  Namespace,
+  Namespaced,
+  PrefixObject,
+} from './types';
 
 export function transformStateCreatorArgs<
-  P extends string,
+  N extends string,
   State extends object,
   T
 >(
-  division: Division<T, P>,
+  namespace: Namespace<T, N>,
   ...args: Parameters<StateCreator<State>>
-): Parameters<StateCreator<FilterByPrefix<P, State>>> {
-  type O = FilterByPrefix<P, State>;
+): Parameters<StateCreator<FilterByPrefix<N, State>>> {
+  type O = FilterByPrefix<N, State>;
   const [originalSet, get, originalApi] = args;
   const { setState, getState, subscribe, getInitialState, destroy } =
     originalApi;
@@ -31,7 +31,7 @@ export function transformStateCreatorArgs<
       if (typeof state === 'function') {
         setState((currentState) => {
           const unprefixedState = getUnprefixedObject(
-            division.prefix,
+            namespace.name,
             currentState
           );
           const updatedState = state(unprefixedState);
@@ -44,25 +44,25 @@ export function transformStateCreatorArgs<
         setState(
           {
             ...getState(),
-            ...getPrefixedObject(division.prefix, state),
+            ...getPrefixedObject(namespace.name, state),
           },
           replace
         );
       }
     },
     getState: () => {
-      return getUnprefixedObject(division.prefix, getState());
+      return getUnprefixedObject(namespace.name, getState());
     },
     subscribe: (listener) => {
       return subscribe((newPrefixedState, oldPrefixedState) => {
         listener(
-          getUnprefixedObject(division.prefix, newPrefixedState),
-          getUnprefixedObject(division.prefix, oldPrefixedState)
+          getUnprefixedObject(namespace.name, newPrefixedState),
+          getUnprefixedObject(namespace.name, oldPrefixedState)
         );
       });
     },
     getInitialState: () => {
-      return getUnprefixedObject(division.prefix, getInitialState());
+      return getUnprefixedObject(namespace.name, getInitialState());
     },
     destroy,
   };
@@ -71,25 +71,16 @@ export function transformStateCreatorArgs<
     (set, replace) => {
       if (typeof set === 'function') {
         originalSet((state) => {
-          const unprefixedState = getUnprefixedObject(division.prefix, state);
+          const unprefixedState = getUnprefixedObject(namespace.name, state);
           const updatedState = set(unprefixedState);
-          return {
-            ...state,
-            ...getPrefixedObject(division.prefix, updatedState),
-          };
+          return getPrefixedObject(namespace.name, updatedState) as State;
         });
       } else {
-        originalSet(
-          {
-            ...get(),
-            ...getPrefixedObject(division.prefix, set),
-          },
-          replace
-        );
+        originalSet(getPrefixedObject(namespace.name, set) as State, replace);
       }
     },
     () => {
-      return getUnprefixedObject(division.prefix, get());
+      return getUnprefixedObject(namespace.name, get());
     },
     newApi,
   ];
@@ -123,124 +114,94 @@ export function getUnprefixedObject<T extends string, Data extends object>(
 }
 
 /**
- * Method used to spread division data into a parent state.
- * @param divisions The divisions
- * @param callback A callback that returns the division data
- * @returns The combined division data
+ * Method used to spread namespace data into a parent state.
+ * @param namespaces The namespaces
+ * @param callback A callback that returns the namespace data
+ * @returns The combined namespace data
  */
-export function spreadDivisions<Divisions extends readonly Division[], Data>(
-  divisions: Divisions,
-  callback: (division: Divisions[number]) => Data
+export function spreadNamespaces<Namespaces extends readonly Namespace[], Data>(
+  namespaces: Namespaces,
+  callback: (namespace: Namespaces[number]) => Data
 ) {
-  return divisions.reduce((acc, division) => {
+  return namespaces.reduce((acc, namespace) => {
     return {
       ...acc,
-      ...callback(division),
+      ...callback(namespace),
     };
   }, {} as Data);
-}
-
-/**
- * Method used to divide divisions into a parent creator method.
- * @param creator The parent creator method
- * @param divisions The divisions
- * @returns A new creator method that includes the divisions
- */
-export function divide<
-  T extends object,
-  Divisions extends readonly Division[],
-  Option extends ExcludeByPrefix<Divisions[number]['prefix'], T>,
-  Result extends Option & Divide<Divisions>,
-  Mis extends [StoreMutatorIdentifier, unknown][] = [],
-  Mos extends [StoreMutatorIdentifier, unknown][] = []
->(
-  divisions: Divisions,
-  creator?: StateCreator<Result, Mis, Mos, Option>
-): StateCreator<Result, Mis, Mos, Result> {
-  return (...args) => {
-    return {
-      ...spreadTransformedDivisions(divisions, ...args),
-      ...creator?.(
-        ...(args as Parameters<StateCreator<Result, Mis, Mos, Option>>)
-      ),
-    } as Result;
-  };
 }
 
 function transformCallback<State extends object>(
   ...args: Parameters<StateCreator<State>>
 ) {
   return function <P extends string>(
-    division: Division<FilterByPrefix<P, State>, P>
+    namespace: Namespace<FilterByPrefix<P, State>, P>
   ) {
-    const newArgs = transformStateCreatorArgs(division, ...args);
-    return getPrefixedObject(division.prefix, division.creator(...newArgs));
+    const newArgs = transformStateCreatorArgs(namespace, ...args);
+    return getPrefixedObject(namespace.name, namespace.creator(...newArgs));
   };
 }
 
-function spreadTransformedDivisions<
+function spreadTransformedNamespaces<
   State extends object,
-  Divisions extends readonly Division[]
+  Namespaces extends readonly Namespace[]
 >(
-  divisions: Divisions,
+  namespaces: Namespaces,
   ...args: Parameters<StateCreator<State>>
-): IncludeByPrefix<Divisions[number]['prefix'], State> {
+): IncludeByPrefix<Namespaces[number]['name'], State> {
   // eslint-disable-next-line
-  return spreadDivisions(divisions, transformCallback(...args)) as any;
+  return spreadNamespaces(namespaces, transformCallback(...args)) as any;
 }
 
 /**
- * Helper method for creating a division hook.
+ * Helper method for creating a namespace hook.
  * @param useStore The parent store hook
- * @param division The division
- * @returns A division hook
- * @note The store passed into this method could be another division hook if you want to create nested division hooks
+ * @param namespace The namespace
+ * @returns A namespace hook
+ * @note The store passed into this method could be another namespace hook if you want to create nested namespace hooks
  * @example
- * const useDivision = divisionHook(useStore, division);
- * const useSubDivision = divisionHook(useDivision, subDivision);
+ * const useNamespace = getNamespaceHook(useStore, namespace);
+ * const useSubNamespace = getNamespaceHook(useNamespace, subNamespace);
  */
-export function divisionHook<Prefix extends string, Store extends object>(
+export function getNamespaceHook<Name extends string, Store extends object>(
   useStore: UseBoundStore<StoreApi<Store>>,
-  division: Division<FilterByPrefix<Prefix, Store>, Prefix>
-): UseBoundStore<StoreApi<FilterByPrefix<Prefix, Store>>> {
-  type T = FilterByPrefix<Prefix, Store>;
+  namespace: Namespace<FilterByPrefix<Name, Store>, Name>
+): UseBoundStore<StoreApi<FilterByPrefix<Name, Store>>> {
+  type T = FilterByPrefix<Name, Store>;
 
   type BoundStore = UseBoundStore<StoreApi<T>>;
 
-  const hook: BoundStore = ((selector) => {
+  const hook = ((selector) => {
     return useStore((state) => {
-      const unprefixState = getUnprefixedObject(division.prefix, state);
+      const unprefixState = getUnprefixedObject(namespace.name, state);
       return selector ? selector(unprefixState) : unprefixState;
     });
   }) as BoundStore;
 
   const get: BoundStore['getState'] = () => {
     const state = useStore.getState();
-    return getUnprefixedObject(division.prefix, state);
+    return getUnprefixedObject(namespace.name, state);
   };
   const set: BoundStore['setState'] = (state) => {
     useStore.setState((currentState) => {
-      const unprefixedState = getUnprefixedObject(
-        division.prefix,
-        currentState
-      );
+      const unprefixedState = getUnprefixedObject(namespace.name, currentState);
       const updatedState =
         typeof state === 'function' ? state(unprefixedState) : state;
-      return getPrefixedObject(division.prefix, updatedState) as Store;
+      return getPrefixedObject(namespace.name, updatedState) as Store;
     });
   };
 
   const subscribe: BoundStore['subscribe'] = (listener) => {
     return useStore.subscribe((newState, oldState) => {
       listener(
-        getUnprefixedObject(division.prefix, newState),
-        getUnprefixedObject(division.prefix, oldState)
+        getUnprefixedObject(namespace.name, newState),
+        getUnprefixedObject(namespace.name, oldState)
       );
     });
   };
 
   const getInitialState: BoundStore['getInitialState'] = () => {
-    return getUnprefixedObject(division.prefix, useStore.getInitialState());
+    return getUnprefixedObject(namespace.name, useStore.getInitialState());
   };
 
   hook.getInitialState = getInitialState;
@@ -253,141 +214,182 @@ export function divisionHook<Prefix extends string, Store extends object>(
 }
 
 /**
- * Helper method for creating multiple division hooks.
+ * Helper method for creating multiple namespace hooks.
  * @param useStore The parent store hook
- * @param divisions The divisions
- * @returns An array of division hooks
- * @note The store passed into this method could be another division hook if you want to create nested division hooks
+ * @param namespaces The namespaces
+ * @returns An array of namespace hooks
+ * @note The store passed into this method could be another namespace hook if you want to create nested namespace hooks
  * @example
- * const [useDivision1, useDivision2] = divisionHooks(useStore, ...divisions);
- * const [useSubDivision1] = divisionHooks(useDivision1, ...subDivisions);
+ * const [useNamespace1, useNamespace2] = getNamespaceHooks(useStore, ...namespaces);
+ * const [useSubNamespace1] = getNamespaceHooks(useNamespace1, ...subNamespaces);
  */
-export function divisionHooks<
+export function getNamespaceHooks<
   Store extends object,
-  Divisions extends readonly Division[],
+  Namespaces extends readonly Namespace[],
   Result = {
-    [K in keyof Divisions]: Divisions[K] extends Division<infer Data, string>
+    [K in keyof Namespaces]: Namespaces[K] extends Namespace<infer Data, string>
       ? UseBoundStore<StoreApi<Data>>
       : never;
   }
->(useStore: UseBoundStore<StoreApi<Store>>, ...divisions: Divisions) {
-  return divisions.map((division) =>
-    divisionHook(useStore, division)
+>(useStore: UseBoundStore<StoreApi<Store>>, ...namespaces: Namespaces) {
+  return namespaces.map((namespace) =>
+    getNamespaceHook(useStore, namespace)
   ) as Result;
 }
 
 /**
- * Helper method for going from a division to a state (usually parent state).
- * @param division A division
+ * Helper method for going from a namespace to a state (usually parent state).
+ * @param namespace A namespace
  * @param state The state of the store
- * @returns The division state
+ * @returns The namespace state
  */
-export function stateToDivision<State extends object, P extends string>(
+export function toNamespace<State extends object, N extends string>(
   // eslint-disable-next-line
-  division: Division<any, P>,
+  namespace: Namespace<any, N>,
   state: State
 ) {
-  return getUnprefixedObject(division.prefix, state);
+  return getUnprefixedObject(namespace.name, state);
 }
 
 /**
- * Helper method for going from a state (usually parent state) to a division.
- * @param division A division
+ * Helper method for going from a state (usually parent state) to a namespace.
+ * @param namespace A namespace
  * @param state The state of the store
- * @returns The division state
+ * @returns The namespace state
  */
-export function divisionToState<State extends object, P extends string>(
+export function fromNamespace<State extends object, P extends string>(
   // eslint-disable-next-line
-  division: Division<any, P>,
+  namespace: Namespace<any, P>,
   state: State
 ) {
-  return getPrefixedObject(division.prefix, state);
+  return getPrefixedObject(namespace.name, state);
 }
 
-type CreateDivision = {
-  <Prefix extends string, Data, Options>(
-    callback: () => Division<Data, Prefix, Options>
-  ): () => Division<Data, Prefix, Options>;
-  <T, Options = unknown>(): <Prefix extends string>(
-    callback: () => Division<T, Prefix, Options>
-  ) => () => Division<T, Prefix, Options>;
+type CreateNamespace = {
+  <Name extends string, Data, Options>(
+    callback: () => Namespace<Data, Name, Options>
+  ): Namespace<Data, Name, Options>;
+  <T, Options = unknown>(): <Name extends string>(
+    callback: () => Namespace<T, Name, Options>
+  ) => Namespace<T, Name, Options>;
 };
 
 /**
- * Helper method for creating a division.
- * @param callback A callback that returns a division
- * @returns A function that returns a division
- *
- * @example
- * const createTypedDivision = createDivision<Division1, CustomOptions<Division1>>()( () => ({
- *  prefix: 'division1',
- * creator: () => ({
- * dataInDivision1: 'data',
- * }),
- * }));
- *
- * const createTypeInferredDivision = createDivision(() => ({
- *  prefix: 'division1',
- * creator: () => ({
- * dataInDivision1: 'data',
- * }),
- * }));
+ * Helper method for creating a namespace.
+ * @param callback A callback that returns a namespace
+ * @returns A function that returns a namespace
  */
 // eslint-disable-next-line
-export const createDivision: CreateDivision = ((callback?: any) => {
+export const createNamespace: CreateNamespace = ((callback?: any) => {
   if (callback) {
     // The first overload implementation
-    return () => callback();
+    return callback();
   } else {
     // The second overload implementation
     return <Prefix extends string, Data, Options>(
-      callback: () => Division<Data, Prefix, Options>
+      callback: () => Namespace<Data, Prefix, Options>
     ) => {
-      return () => callback();
+      return callback();
     };
   }
-}) as CreateDivision;
+}) as CreateNamespace;
 
 /**
- * Helper method for partializing a division. This method is often used in 3rd party libraries to create a partialized version of a store.
+ * Helper method for partializing a namespace. This method is often used in 3rd party libraries to create a partialized version of a store.
  * @param state The state of the store
- * @param getPartializeFn A function that returns a partialized version of the division
- * @returns A function that returns a partialized version of the division
+ * @param getPartializeFn A function that returns a partialized version of the namespace
+ * @returns A function that returns a partialized version of the namespace
  */
-export function partializeDivision<
+export function partializeNamespace<
   P extends string,
   State extends object,
   Options
 >(
   state: State,
   getPartializeFn: (
-    division: Division<FilterByPrefix<P, State>, P, Options>
+    namespace: Namespace<FilterByPrefix<P, State>, P, Options>
   ) =>
     | ((state: FilterByPrefix<P, State>) => Partial<FilterByPrefix<P, State>>)
     | undefined
 ) {
-  return (division: Division<FilterByPrefix<P, State>, P, Options>) => {
-    const divisionData = stateToDivision(division, state);
-    const partializedData = getPartializeFn(division)?.(divisionData);
-    return divisionToState(division, partializedData ?? {});
+  return (namespace: Namespace<FilterByPrefix<P, State>, P, Options>) => {
+    const namespaceData = toNamespace(namespace, state);
+    const partializedData = getPartializeFn(namespace)?.(namespaceData);
+    return fromNamespace(namespace, partializedData ?? {});
   };
 }
 
 /**
- * Helper method for partializing a division. This method is often used in 3rd party libraries to create a partialized version of a store.
+ * Helper method for partializing a namespace. This method is often used in 3rd party libraries to create a partialized version of a store.
  * @param state The state of the store
- * @param divisions The divisions of the store
- * @param getPartializeFn A function that returns a partialized version of the division
- * @returns A function that returns a partialized version of the division
+ * @param namespaces The namespaces of the store
+ * @param getPartializeFn A function that returns a partialized version of the namespace
+ * @returns A function that returns a partialized version of the namespace
  */
-export function partializeDivisions<
+export function partializeNamespaces<
   State extends object,
-  Divisions extends readonly Division[],
-  // function not typed due to union type error from divisions
-  Fn extends <D extends Divisions[number]>(
-    division: D
+  Namespaces extends readonly Namespace[],
+  // function not typed due to union type error from namespaces
+  Fn extends <D extends Namespaces[number]>(
+    namespace: D
   ) => // eslint-disable-next-line
   ((state: any) => any) | undefined
->(state: State, divisions: Divisions, getPartializeFn: Fn) {
-  return spreadDivisions(divisions, partializeDivision(state, getPartializeFn));
+>(state: State, namespaces: Namespaces, getPartializeFn: Fn) {
+  return spreadNamespaces(
+    namespaces,
+    partializeNamespace(state, getPartializeFn)
+  );
+}
+
+type Write<T, U> = Omit<T, keyof U> & U;
+type WithNamespace<S, A> = S extends { getState: () => infer T }
+  ? Write<S, A>
+  : never;
+
+declare module 'zustand/vanilla' {
+  interface StoreMutators<S, A> {
+    'zustand-namespace': WithNamespace<S, A>;
+  }
+}
+
+type NameSpaceMutator = <
+  T extends object,
+  Namespaces extends readonly Namespace[],
+  Option extends ExcludeByPrefix<Namespaces[number]['name'], T>,
+  Result extends Option & Namespaced<Namespaces>,
+  Mps extends [StoreMutatorIdentifier, unknown][] = [],
+  Mcs extends [StoreMutatorIdentifier, unknown][] = []
+>(
+  namespaces: Namespaces,
+  creator?: StateCreator<Result, [...Mps, ['zustand-namespace', []]], Mcs>
+) => (
+  creator: StateCreator<T, [...Mps, ['zustand-namespace', unknown]], Mcs>
+) => StateCreator<T, Mps, [['zustand-namespace', []], ...Mcs]>;
+
+export const namespace = namespaceImplementation as unknown as NameSpaceMutator;
+/**
+ * Method used to divide namespaces into a parent creator method.
+ * @param creator The parent creator method
+ * @param namespaces The namespaces
+ * @returns A new creator method that includes the namespaces
+ */
+function namespaceImplementation<
+  T extends object,
+  Namespaces extends readonly Namespace[],
+  Option extends ExcludeByPrefix<Namespaces[number]['name'], T>,
+  Result extends Option & Namespaced<Namespaces>,
+  Mis extends [StoreMutatorIdentifier, unknown][] = [],
+  Mos extends [StoreMutatorIdentifier, unknown][] = []
+>(
+  namespaces: Namespaces,
+  creator?: StateCreator<Result, Mis, Mos, Option>
+): StateCreator<Result, Mis, Mos, Result> {
+  return (...args) => {
+    return {
+      ...spreadTransformedNamespaces(namespaces, ...args),
+      ...creator?.(
+        ...(args as Parameters<StateCreator<Result, Mis, Mos, Option>>)
+      ),
+    } as Result;
+  };
 }
