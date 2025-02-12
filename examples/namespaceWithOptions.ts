@@ -2,11 +2,10 @@ import { create } from 'zustand';
 import { temporal, ZundoOptions } from 'zundo';
 import {
   createNamespace,
-  getNamespaceHooks,
   namespaced,
   partializeNamespaces,
 } from '../src/utils';
-import { Namespaced } from '../src/types';
+import { ExtractNamespaces } from '../src/types';
 
 type CustomOptions<T> = {
   partialized?: ZundoOptions<T, Partial<T>>['partialize'];
@@ -50,7 +49,7 @@ const namespace2 = createNamespace<Namespace2, CustomOptions<Namespace2>>()(
 
 const namespaces = [namespace1, namespace2] as const;
 
-type AppState = Namespaced<typeof namespaces>;
+type AppState = ExtractNamespaces<typeof namespaces>;
 const namespace = namespaced(...namespaces);
 
 const useStore = create<AppState>()(
@@ -68,8 +67,7 @@ const useStore = create<AppState>()(
   )
 );
 
-export const [useNamespace1, useNamespace2] = getNamespaceHooks(
-  useStore,
+export const [useNamespace1, useNamespace2] = useStore.getNamespaceHook(
   ...namespaces
 );
 

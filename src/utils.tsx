@@ -7,20 +7,20 @@ import {
 import { shallow } from 'zustand/shallow';
 import {
   ExcludeByPrefix,
+  ExtractNamespaces,
   FilterByPrefix,
   IncludeByPrefix,
   Namespace,
-  Namespaced,
   PrefixObject,
   UseBoundNamespace,
+  WithNamespace,
 } from './types';
-import { useDebugValue, useSyncExternalStore } from 'react';
 
 function getNamespacedApi<T extends object, Name extends string>(
   namespace: Namespace<FilterByPrefix<Name, T>, Name>,
   api: StoreApi<T>
-): StoreApi<FilterByPrefix<Name, T>> {
-  return {
+): WithNamespace<StoreApi<FilterByPrefix<Name, T>>> {
+  const namespacedApi: StoreApi<FilterByPrefix<Name, T>> = {
     getInitialState: () => {
       return getUnprefixedObject(namespace.name, api.getInitialState());
     },
@@ -70,6 +70,22 @@ function getNamespacedApi<T extends object, Name extends string>(
       });
     },
   };
+
+  return withFactories(namespacedApi);
+}
+
+function withFactories<T extends object>(
+  api: StoreApi<T>
+): WithNamespace<StoreApi<T>> {
+  return Object.assign(api, {
+    getNamespaceHook: (...namespaces: Namespace[]) => {
+      if (namespaces.length === 1) {
+        return getNamespaceHook(api, namespaces[0]);
+      } else {
+        return namespaces.map((namespace) => getNamespaceHook(api, namespace));
+      }
+    },
+  } as WithNamespace<StoreApi<T>>);
 }
 
 export function transformStateCreatorArgs<
@@ -77,74 +93,14 @@ export function transformStateCreatorArgs<
   State extends object,
   T
 >(
-  namespace: Namespace<T, N>,
+  namespace: Namespace<FilterByPrefix<N, State>, N>,
   ...args: Parameters<StateCreator<State>>
 ): Parameters<StateCreator<FilterByPrefix<N, State>>> {
-  type O = FilterByPrefix<N, State>;
-  const [originalSet, get, originalApi] = args;
-  const { setState, getState, subscribe, getInitialState } = originalApi;
+  const [, , originalApi] = args;
 
-  const newApi: StoreApi<O> = {
-    ...originalApi,
-    setState: (state, replace) => {
-      if (typeof state === 'function') {
-        setState((currentState) => {
-          const unprefixedState = getUnprefixedObject(
-            namespace.name,
-            currentState
-          );
-          const updatedState = state(unprefixedState);
-          return {
-            ...currentState,
-            ...updatedState,
-          };
-        });
-      } else {
-        setState(
-          {
-            ...getState(),
-            ...getPrefixedObject(namespace.name, state),
-          },
-          replace as true
-        );
-      }
-    },
-    getState: () => {
-      return getUnprefixedObject(namespace.name, getState());
-    },
-    subscribe: (listener) => {
-      return subscribe((newPrefixedState, oldPrefixedState) => {
-        listener(
-          getUnprefixedObject(namespace.name, newPrefixedState),
-          getUnprefixedObject(namespace.name, oldPrefixedState)
-        );
-      });
-    },
-    getInitialState: () => {
-      return getUnprefixedObject(namespace.name, getInitialState());
-    },
-  };
+  const newApi = getNamespacedApi(namespace, originalApi);
 
-  return [
-    (set, replace) => {
-      if (typeof set === 'function') {
-        originalSet((state) => {
-          const unprefixedState = getUnprefixedObject(namespace.name, state);
-          const updatedState = set(unprefixedState);
-          return getPrefixedObject(namespace.name, updatedState) as State;
-        });
-      } else {
-        originalSet(
-          getPrefixedObject(namespace.name, set) as State,
-          replace as true
-        );
-      }
-    },
-    () => {
-      return getUnprefixedObject(namespace.name, get());
-    },
-    newApi,
-  ];
+  return [newApi.setState, newApi.getState, newApi];
 }
 
 export function getPrefixedObject<T extends string, O extends object>(
@@ -256,11 +212,9 @@ export function fromNamespace<State extends object, P extends string>(
 type CreateNamespace = {
   <Name extends string, Data, Options>(
     callback: () => Namespace<Data, Name, Options>
-    // eslint-disable-next-line
-  ): Namespace<Data, Name, Options, any, any>;
+  ): Namespace<Data, Name, Options>;
   <T, Options = unknown>(): <Name extends string>(
-    // eslint-disable-next-line
-    callback: () => Namespace<T, Name, Options, any, any>
+    callback: () => Namespace<T, Name, Options>
   ) => Namespace<T, Name, Options>;
 };
 
@@ -330,27 +284,10 @@ export function partializeNamespaces<
   );
 }
 
-type Write<T, U> = Omit<T, keyof U> & U;
-type WithNamespace<S, A> = S extends {
-  getState: () => infer T;
-}
-  ? A extends Namespace[]
-    ? Write<
-        S,
-        {
-          namespaces: {
-            [N in A[number] as N['name']]: () => UseBoundNamespace<
-              StoreApi<FilterByPrefix<N['name'], T>>
-            >;
-          };
-        }
-      >
-    : never
-  : never;
-
 declare module 'zustand/vanilla' {
+  // eslint-disable-next-line
   interface StoreMutators<S, A> {
-    'zustand-namespaces': WithNamespace<S, A>;
+    'zustand-namespaces': WithNamespace<S>;
   }
 }
 
@@ -359,7 +296,7 @@ export function namespaced<Namespaces extends readonly Namespace[]>(
 ): <
   T,
   Excluded extends ExcludeByPrefix<Namespaces[number]['name'], T>,
-  Result extends Excluded & Namespaced<Namespaces>,
+  Result extends Excluded & ExtractNamespaces<Namespaces>,
   Mps extends [StoreMutatorIdentifier, unknown][] = [],
   Mcs extends [StoreMutatorIdentifier, unknown][] = []
 >(
@@ -379,13 +316,8 @@ export function namespaced<Namespaces extends readonly Namespace[]>(
   return (creator) => {
     return (...args) => {
       const [set, get, api] = args;
-      const apiWithNamespace = api as WithNamespace<typeof api, Namespaces>;
-      apiWithNamespace.namespaces = apiWithNamespace.namespaces ?? {};
-      for (const namespace of namespaces) {
-        console.log('namespace', namespace);
-        apiWithNamespace.namespaces[namespace.name] = () =>
-          getNamespaceHook(api, namespace) as any;
-      }
+
+      const apiWithNamespace = withFactories(api);
 
       return {
         ...spreadTransformedNamespaces(namespaces, set, get, apiWithNamespace),

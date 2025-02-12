@@ -2,11 +2,10 @@ import { create } from 'zustand';
 import { temporal, ZundoOptions } from 'zundo';
 import {
   createNamespace,
-  getNamespaceHooks,
   namespaced,
   partializeNamespaces,
 } from '../src/utils';
-import { Namespaced } from '../src/types';
+import { ExtractNamespace, ExtractNamespaces } from '../src/types';
 
 type Namespace2 = {
   dataInNamespace2: string;
@@ -38,13 +37,11 @@ const subNamespace1 = createNamespace<
   },
 }));
 
-const subNamespaces = [subNamespace1] as const;
-
 type Namespace1 = {
   dataInNamespace1: string;
-} & Namespaced<typeof subNamespaces>;
+} & ExtractNamespace<typeof subNamespace1>;
 
-const subNamespace = namespaced(...subNamespaces);
+const subNamespace = namespaced(subNamespace1);
 
 const namespace1 = createNamespace<Namespace1, CustomOptions<Namespace1>>()(
   () => ({
@@ -57,7 +54,7 @@ const namespace1 = createNamespace<Namespace1, CustomOptions<Namespace1>>()(
         dataInNamespace1: state.dataInNamespace1,
         ...partializeNamespaces(
           state,
-          subNamespaces,
+          [subNamespace1],
           (namespace) => namespace.options?.partialized
         ),
       }),
@@ -77,31 +74,25 @@ const namespace2 = createNamespace<Namespace2, CustomOptions<Namespace2>>()(
 
 const namespaces = [namespace1, namespace2] as const;
 
-type AppState = Namespaced<typeof namespaces>;
+type AppState = ExtractNamespaces<typeof namespaces> & {
+  test: 'hi';
+};
 
 const namespace = namespaced(...namespaces);
 
 const useStore = create<AppState>()(
-  temporal(namespace(), {
-    partialize: (state) => {
-      return partializeNamespaces(
-        state,
-        namespaces,
-        (namespace) => namespace.options?.partialized
-      );
-    },
-  })
+  namespace(() => ({
+    namespace1_dataInNamespace1: 'data',
+    namespace2_arrayInNamespace2: [1],
+    test: 'hi',
+  }))
 );
 
-export const [useNamespace1, useNamespace2] = getNamespaceHooks(
-  useStore,
+export const [useNamespace1, useNamespace2] = useStore.getNamespaceHook(
   ...namespaces
 );
 // using useNamespace1, we can create a hook for its nested namespaces
-export const [useSubNamespace1] = getNamespaceHooks(
-  useNamespace1,
-  ...subNamespaces
-);
+export const useSubNamespace1 = useNamespace1.getNamespaceHook(subNamespace1);
 
 // useStore((state) => state.namespace1_dataInNamespace1);
 // useStore((state) => state.namespace2_dataInNamespace2);

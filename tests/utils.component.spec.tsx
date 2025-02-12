@@ -1,11 +1,11 @@
-import { afterEach, expect, test } from 'vitest';
-import React, { act } from 'react';
-import { create } from 'zustand';
+import '@testing-library/jest-dom';
 import { cleanup, render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import '@testing-library/jest-dom';
+import React from 'react';
+import { afterEach, expect, test } from 'vitest';
+import { create } from 'zustand';
 import { createNamespace, namespaced } from '../src/utils';
-import { Namespaced } from '../src/types';
+import { ExtractNamespace, ExtractNamespaces } from '../src/types';
 
 type Namespace1 = {
   dataInNamespace1: string;
@@ -25,27 +25,23 @@ type SubNamespace1 = {
   resetSubNamespace1Data: () => void;
 };
 
-const subNamespaces = [
-  createNamespace<SubNamespace1>()(() => ({
-    name: 'subNamespace1',
-    creator: (set) => ({
-      dataInSubNamespace1: 'Initial SubNamespace1 Data',
-      updateSubNamespace1Data: (data) => set({ dataInSubNamespace1: data }),
-      resetSubNamespace1Data: () =>
-        set({ dataInSubNamespace1: 'Initial SubNamespace1 Data' }),
-    }),
-  })),
-] as const;
+const subNamespace = createNamespace<SubNamespace1>()(() => ({
+  name: 'subNamespace1',
+  creator: (set) => ({
+    dataInSubNamespace1: 'Initial SubNamespace1 Data',
+    updateSubNamespace1Data: (data) => set({ dataInSubNamespace1: data }),
+    resetSubNamespace1Data: () =>
+      set({ dataInSubNamespace1: 'Initial SubNamespace1 Data' }),
+  }),
+}));
 
 type Namespace1WithSubNamespace1 = Namespace1 &
-  Namespaced<typeof subNamespaces>;
+  ExtractNamespace<typeof subNamespace>;
 
-const subNamespace = namespaced(...subNamespaces);
-
-// Define namespaces
-const createNamespace1 = createNamespace<Namespace1WithSubNamespace1>()(() => ({
+// Define namespacesƒ
+const namespace1 = createNamespace<Namespace1WithSubNamespace1>()(() => ({
   name: 'namespace1',
-  creator: subNamespace((set) => ({
+  creator: namespaced(subNamespace)((set) => ({
     dataInNamespace1: 'Initial Namespace1 Data',
     updateNamespace1Data: (data) => set({ dataInNamespace1: data }),
     resetNamespace1Data: () =>
@@ -53,7 +49,7 @@ const createNamespace1 = createNamespace<Namespace1WithSubNamespace1>()(() => ({
   })),
 }));
 
-const createNamespace2 = createNamespace<Namespace2>()(() => ({
+const namespace2 = createNamespace<Namespace2>()(() => ({
   name: 'namespace2',
   creator: (set) => ({
     dataInNamespace2: 'Initial Namespace2 Data',
@@ -63,22 +59,17 @@ const createNamespace2 = createNamespace<Namespace2>()(() => ({
   }),
 }));
 
-const namespaces = [createNamespace1, createNamespace2] as const;
-type AppState = Namespaced<typeof namespaces>;
+const namespaces = [namespace1, namespace2];
+type AppState = ExtractNamespaces<typeof namespaces>;
 
 const namespace = namespaced(...namespaces);
 
 // Create zustand store
 const useStore = create<AppState>()(namespace(() => ({})));
 
-// Create utils for namespaces
-const useNamespace1 = useStore.namespaces.namespace1();
-const useNamespace2 = useStore.namespaces.namespace2();
-console.log('useStore', useStore);
-console.log('useNamespace1', useNamespace1);
-const useSubNamespace1 = {} as any;
-// const useNamespace2 = getNamespaceHook(useStore, createNamespace2);
-// const useSubNamespace1 = getNamespaceHook(useNamespace1, subNamespaces[0]);
+const useNamespace1 = useStore.getNamespaceHook(namespace1);
+const useSubNamespace1 = useNamespace1.getNamespaceHook(subNamespace);
+const useNamespace2 = useStore.getNamespaceHook(namespace2);
 
 const SubNamespace1Component = () => {
   const data = useSubNamespace1((state) => state.dataInSubNamespace1);
@@ -176,9 +167,9 @@ const App = () => {
 
   return (
     <div>
-      {/* <SubNamespace1Component /> */}
+      <SubNamespace1Component />
       <Namespace1Component />
-      {/* <Namespace2Component /> */}
+      <Namespace2Component />
       <button onClick={resetAll} type="button">
         Reset All
       </button>
@@ -229,12 +220,12 @@ describe('Zustand Namespaces with Components', () => {
     expect(screen.getByTestId('namespace1-data')).toHaveTextContent(
       'Initial Namespace1 Data'
     );
-    // expect(screen.getByTestId('namespace2-data')).toHaveTextContent(
-    //   'Initial Namespace2 Data'
-    // );
-    // expect(screen.getByTestId('subNamespace1-data')).toHaveTextContent(
-    //   'Initial SubNamespace1 Data'
-    // );
+    expect(screen.getByTestId('namespace2-data')).toHaveTextContent(
+      'Initial Namespace2 Data'
+    );
+    expect(screen.getByTestId('subNamespace1-data')).toHaveTextContent(
+      'Initial SubNamespace1 Data'
+    );
   });
 
   test('should update namespace1 data when the button is clicked', async () => {

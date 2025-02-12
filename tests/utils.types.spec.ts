@@ -8,13 +8,16 @@ import {
   getUnprefixedObject,
   namespaced,
   createNamespace,
-  getNamespaceHook,
-  getNamespaceHooks,
   toNamespace,
   fromNamespace,
 } from '../src/utils';
 import { StoreApi, StateCreator, create, UseBoundStore } from 'zustand';
-import { FilterByPrefix, Namespace, PrefixObject } from '../src/types';
+import {
+  FilterByPrefix,
+  Namespace,
+  PrefixObject,
+  UseBoundNamespace,
+} from '../src/types';
 
 type State = {
   user_name: string;
@@ -189,10 +192,12 @@ describe('namespaceHook', () => {
       }))
     );
 
-    const hook = getNamespaceHook(useStore, userNamespace);
+    const hook = useStore.getNamespaceHook(userNamespace);
 
     expect(hook).toBeDefined();
-    expectType<UseBoundStore<StoreApi<FilterByPrefix<'user', State>>>>(hook);
+    expectType<UseBoundNamespace<StoreApi<FilterByPrefix<'user', State>>>>(
+      hook
+    );
   });
 });
 
@@ -222,8 +227,10 @@ describe('namespaceHooks', () => {
       }))
     );
 
-    const [useUser, useAdmin] = getNamespaceHooks(
-      useStore,
+    console.log(useStore.getNamespaceHook);
+    console.log(useStore);
+
+    const [useUser, useAdmin] = useStore.getNamespaceHook(
       userNamespace,
       adminNamespace
     );
@@ -231,8 +238,10 @@ describe('namespaceHooks', () => {
     expect(useUser).toBeDefined();
     expect(useAdmin).toBeDefined();
 
-    expectType<UseBoundStore<StoreApi<FilterByPrefix<'user', State>>>>(useUser);
-    expectType<UseBoundStore<StoreApi<FilterByPrefix<'admin', State>>>>(
+    expectType<UseBoundNamespace<StoreApi<FilterByPrefix<'user', State>>>>(
+      useUser
+    );
+    expectType<UseBoundNamespace<StoreApi<FilterByPrefix<'admin', State>>>>(
       useAdmin
     );
   });

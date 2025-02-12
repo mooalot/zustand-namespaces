@@ -8,8 +8,9 @@ export {
   partializeNamespaces,
 } from './utils';
 export type {
-  Namespaced,
   Namespace,
+  ExtractNamespace,
+  ExtractNamespaces,
   FilterByPrefix,
   IncludeByPrefix,
   ExcludeByPrefix,

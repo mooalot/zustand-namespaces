@@ -10,7 +10,7 @@ import {
   spreadNamespaces,
   toNamespace,
 } from '../src/utils';
-import { Namespace, Namespaced } from '../src/types';
+import { ExtractNamespaces, Namespace } from '../src/types';
 
 describe('Utility Functions', () => {
   describe('getPrefixedObject', () => {
@@ -150,7 +150,7 @@ describe('Utility Functions', () => {
     type Namespace = {
       one: string;
       two: string;
-    } & Namespaced<typeof subNamespaces>;
+    } & ExtractNamespaces<typeof subNamespaces>;
 
     const namespace = createNamespace<Namespace, CustomOptions<Namespace>>()(
       () => ({
@@ -175,7 +175,7 @@ describe('Utility Functions', () => {
 
     const namespaces = [namespace] as const;
 
-    const state: Namespaced<typeof namespaces> = {
+    const state: ExtractNamespaces<typeof namespaces> = {
       namespace1_one: 'one',
       namespace1_two: 'two',
       namespace1_subNamespace1_one: 'one',

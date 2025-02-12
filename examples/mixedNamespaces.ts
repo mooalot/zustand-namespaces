@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { createNamespace, getNamespaceHooks, namespaced } from '../src/utils';
-import { Namespaced } from '../src/types';
+import { createNamespace, namespaced } from '../src/utils';
+import { ExtractNamespaces } from '../src/types';
 type Namespace1 = {
   dataInNamespace1: string;
 };
@@ -29,7 +29,7 @@ type NotNamespacedData = {
   foo: string;
 };
 
-type AppState = Namespaced<typeof namespaces> & NotNamespacedData;
+type AppState = ExtractNamespaces<typeof namespaces> & NotNamespacedData;
 const namespace = namespaced(...namespaces);
 
 const useStore = create<AppState>()(
@@ -38,8 +38,7 @@ const useStore = create<AppState>()(
   }))
 );
 
-export const [useNamespace1, useNamespace2] = getNamespaceHooks(
-  useStore,
+export const [useNamespace1, useNamespace2] = useStore.getNamespaceHook(
   ...namespaces
 );
 
