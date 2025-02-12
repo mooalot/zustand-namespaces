@@ -12,6 +12,7 @@ export type Namespace<
 > = {
   name: Name;
   // child creator does not care about Mutators
+  // eslint-disable-next-line
   creator: StateCreator<T, any, any>;
   options?: Options;
 };

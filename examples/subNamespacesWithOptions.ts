@@ -1,11 +1,11 @@
+import { ZundoOptions } from 'zundo';
 import { create } from 'zustand';
-import { temporal, ZundoOptions } from 'zundo';
+import { ExtractNamespace, ExtractNamespaces } from '../src/types';
 import {
   createNamespace,
   namespaced,
   partializeNamespaces,
 } from '../src/utils';
-import { ExtractNamespace, ExtractNamespaces } from '../src/types';
 
 type Namespace2 = {
   dataInNamespace2: string;

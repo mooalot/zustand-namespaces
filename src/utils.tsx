@@ -90,8 +90,7 @@ function withFactories<T extends object>(
 
 export function transformStateCreatorArgs<
   N extends string,
-  State extends object,
-  T
+  State extends object
 >(
   namespace: Namespace<FilterByPrefix<N, State>, N>,
   ...args: Parameters<StateCreator<State>>

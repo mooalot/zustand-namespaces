@@ -41,14 +41,14 @@ export const [useNamespace1, useNamespace2] = useStore.getNamespaceHook(
   ...namespaces
 );
 
-useStore((state) => state.namespace1_dataInNamespace1);
-useStore((state) => state.namespace2_dataInNamespace2);
-useStore.getState;
-useStore.setState;
+// useStore((state) => state.namespace1_dataInNamespace1);
+// useStore((state) => state.namespace2_dataInNamespace2);
+// useStore.getState;
+// useStore.setState;
 
-useNamespace1((state) => state.dataInNamespace1);
-useNamespace1.getState;
-useNamespace1.setState;
-useNamespace2((state) => state.dataInNamespace2);
-useNamespace2.getState;
-useNamespace2.setState;
+// useNamespace1((state) => state.dataInNamespace1);
+// useNamespace1.getState;
+// useNamespace1.setState;
+// useNamespace2((state) => state.dataInNamespace2);
+// useNamespace2.getState;
+// useNamespace2.setState;
