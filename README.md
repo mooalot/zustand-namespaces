@@ -12,27 +12,32 @@ npm install zustand-namespaces
 
 ```javascript
 import { create } from 'zustand';
-import {
-  createNamespace,
-  namespaced,
-  getNamespaceHook,
-} from 'zustand-namespaces';
+import { createNamespace, namespaced } from 'zustand-namespaces';
 
-const namespace1 = createNamespace(() => ({
-  prefix: 'namespace1',
-  creator: () => ({ dataInNamespace1: 'data' }),
+const namespaceA = createNamespace(() => ({
+  name: 'namespaceA',
+  creator: () => ({
+    dataInNamespaceA: 'data',
+  }),
 }));
 
-const namespace2 = createNamespace(() => ({
-  prefix: 'namespace2',
-  creator: () => ({ dataInNamespace2: 'data' }),
+const namespaceB = createNamespace(() => ({
+  name: 'namespaceB',
+  creator: () => ({
+    dataInNamespaceB: 'data',
+  }),
 }));
 
-const namespace = namespaced(namespace1, namespace2);
+const namespace = namespaced(namespaceA, namespaceB);
 
-const useStore = create(namespace(() => ({ moreData: 'hi' })));
-export const useNamespace1 = getNamespaceHook(useStore, namespace1);
-export const useNamespace2 = getNamespaceHook(useStore, namespace2);
+const useStore = create(
+  namespace(() => ({
+    mainData: 'data',
+  }))
+);
+
+export const useNamespaceA = useStore.getNamespaceHook(namespaceA);
+export const useNamespaceB = useStore.getNamespaceHook(namespaceB);
 ```
 
 ## TypeScript Support
@@ -51,12 +56,9 @@ More examples can be found in the [examples directory](https://github.com/mooalo
 
 - **createNamespace**: Creates a new state namespace.
 - **namespaced**: Combines namespaces into a single state creation method.
-- **getNamespaceHook**: Generates hooks for accessing namespace states.
-- **getNamespaceHooks**: Creates hooks for multiple namespaces.
 - **spreadNamespaces**: Merges namespace data into a parent state.
 - **toNamespace**: Extracts a namespace's state from the parent state.
 - **fromNamespace**: Converts namespace state to parent state.
-- **partializeNamespace**: Creates a partialized version of a namespace’s state.
 - **partializeNamespaces**: Partializes multiple namespaces at once.
 
 For full documentation, visit the [repository](https://github.com/mooalot/zustand-namespaces).

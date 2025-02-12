@@ -4,7 +4,6 @@ export {
   toNamespace,
   fromNamespace,
   spreadNamespaces,
-  partializeNamespace,
   partializeNamespaces,
 } from './utils';
 export type {
