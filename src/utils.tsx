@@ -366,7 +366,7 @@ type WithNamespace<S, A> = S;
 
 declare module 'zustand/vanilla' {
   interface StoreMutators<S, A> {
-    'zustand-namespace': WithNamespace<S, A>;
+    'zustand-namespaces': WithNamespace<S, A>;
   }
 }
 
@@ -381,14 +381,14 @@ export function namespaced<Namespaces extends readonly Namespace[]>(
 >(
   creator?: StateCreator<
     Result,
-    [...Mps, ['zustand-namespace', unknown]],
+    [...Mps, ['zustand-namespaces', unknown]],
     Mcs,
     Excluded
   >
 ) => StateCreator<
   Result,
   Mps,
-  [['zustand-namespace', Namespaces], ...Mcs],
+  [['zustand-namespaces', Namespaces], ...Mcs],
   Result
 > {
   // @ts-expect-error  // eslint-disable-next-line
