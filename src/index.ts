@@ -1,8 +1,6 @@
 export {
   namespaced,
   createNamespace,
-  getNamespaceHook,
-  getNamespaceHooks,
   toNamespace,
   fromNamespace,
   spreadNamespaces,
@@ -15,4 +13,5 @@ export type {
   FilterByPrefix,
   IncludeByPrefix,
   ExcludeByPrefix,
+  UseBoundNamespace,
 } from './types';

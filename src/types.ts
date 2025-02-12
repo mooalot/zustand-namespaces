@@ -1,4 +1,9 @@
-import { StateCreator, StoreMutatorIdentifier } from 'zustand';
+import {
+  ExtractState,
+  StateCreator,
+  StoreApi,
+  StoreMutatorIdentifier,
+} from 'zustand';
 
 export type Namespaced<T extends readonly Namespace[]> = UnionToIntersection<
   ExtractNamespaceType<T[number]>
@@ -50,3 +55,11 @@ export type UnionToIntersection<U> = // eslint-disable-next-line
   (U extends any ? (arg: U) => void : never) extends (arg: infer I) => void
     ? I
     : never;
+
+type Readonly<T extends object> = {
+  readonly [K in keyof T]: T[K];
+};
+
+export type UseBoundNamespace<S extends Readonly<StoreApi<unknown>>> = {
+  <U>(selector: (state: ExtractState<S>) => U): U;
+} & S;
