@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { ExtractNamespace, ExtractNamespaces } from '../src/types';
 import {
   createNamespace,
+  getNamespaceHooks,
   namespaced,
   partializeNamespaces,
 } from '../src/utils';
@@ -88,11 +89,15 @@ const useStore = create<AppState>()(
   }))
 );
 
-export const [useNamespace1, useNamespace2] = useStore.getNamespaceHook(
+export const [useNamespace1, useNamespace2] = getNamespaceHooks(
+  useStore,
   ...namespaces
 );
 // using useNamespace1, we can create a hook for its nested namespaces
-export const useSubNamespace1 = useNamespace1.getNamespaceHook(subNamespace1);
+export const [useSubNamespace1] = getNamespaceHooks(
+  useNamespace1,
+  subNamespace1
+);
 
 // useStore((state) => state.namespace1_dataInNamespace1);
 // useStore((state) => state.namespace2_dataInNamespace2);

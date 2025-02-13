@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { temporal, ZundoOptions } from 'zundo';
 import {
   createNamespace,
+  getNamespaceHooks,
   namespaced,
   partializeNamespaces,
 } from '../src/utils';
@@ -67,7 +68,8 @@ const useStore = create<AppState>()(
   )
 );
 
-export const [useNamespace1, useNamespace2] = useStore.getNamespaceHook(
+export const [useNamespace1, useNamespace2] = getNamespaceHooks(
+  useStore,
   ...namespaces
 );
 

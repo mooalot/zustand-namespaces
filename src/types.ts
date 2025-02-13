@@ -55,28 +55,6 @@ type Readonly<T extends object> = {
   readonly [K in keyof T]: T[K];
 };
 
-type Write<T, U> = Omit<T, keyof U> & U;
 export type UseBoundNamespace<S extends Readonly<StoreApi<unknown>>> = {
   <U>(selector: (state: ExtractState<S>) => U): U;
-} & WithNamespace<S>;
-
-export type WithNamespace<S> = Write<
-  S,
-  {
-    getNamespaceHook: GetNamespaceHook<ExtractState<S>>;
-  }
->;
-
-type GetNamespaceHook<T> = {
-  // Overload for a single namespace
-  <N extends Namespace>(namespace: N): UseBoundNamespace<
-    StoreApi<FilterByPrefix<N['name'], T>>
-  >;
-
-  // Overload for multiple namespaces
-  <Namespaces extends readonly Namespace[]>(...namespaces: [...Namespaces]): {
-    [K in keyof Namespaces]: UseBoundNamespace<
-      StoreApi<FilterByPrefix<Namespaces[K]['name'], T>>
-    >;
-  };
-};
+} & S;

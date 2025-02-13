@@ -10,6 +10,7 @@ import {
   createNamespace,
   toNamespace,
   fromNamespace,
+  getNamespaceHooks,
 } from '../src/utils';
 import { StoreApi, StateCreator, create, UseBoundStore } from 'zustand';
 import {
@@ -192,7 +193,7 @@ describe('namespaceHook', () => {
       }))
     );
 
-    const hook = useStore.getNamespaceHook(userNamespace);
+    const [hook] = getNamespaceHooks(useStore, userNamespace);
 
     expect(hook).toBeDefined();
     expectType<UseBoundNamespace<StoreApi<FilterByPrefix<'user', State>>>>(
@@ -227,10 +228,8 @@ describe('namespaceHooks', () => {
       }))
     );
 
-    console.log(useStore.getNamespaceHook);
-    console.log(useStore);
-
-    const [useUser, useAdmin] = useStore.getNamespaceHook(
+    const [useUser, useAdmin] = getNamespaceHooks(
+      useStore,
       userNamespace,
       adminNamespace
     );

@@ -2,7 +2,7 @@ import {
   StateCreator,
   StoreApi,
   StoreMutatorIdentifier,
-  useStore,
+  UseBoundStore,
 } from 'zustand';
 import { shallow } from 'zustand/shallow';
 import {
@@ -13,13 +13,12 @@ import {
   Namespace,
   PrefixObject,
   UseBoundNamespace,
-  WithNamespace,
 } from './types';
 
 function getNamespacedApi<T extends object, Name extends string>(
   namespace: Namespace<FilterByPrefix<Name, T>, Name>,
   api: StoreApi<T>
-): WithNamespace<StoreApi<FilterByPrefix<Name, T>>> {
+): StoreApi<FilterByPrefix<Name, T>> {
   const namespacedApi: StoreApi<FilterByPrefix<Name, T>> = {
     getInitialState: () => {
       return getUnprefixedObject(namespace.name, api.getInitialState());
@@ -71,21 +70,32 @@ function getNamespacedApi<T extends object, Name extends string>(
     },
   };
 
-  return withFactories(namespacedApi);
+  return namespacedApi;
 }
 
-function withFactories<T extends object>(
-  api: StoreApi<T>
-): WithNamespace<StoreApi<T>> {
-  return Object.assign(api, {
-    getNamespaceHook: (...namespaces: Namespace[]) => {
-      if (namespaces.length === 1) {
-        return getNamespaceHook(api, namespaces[0]);
-      } else {
-        return namespaces.map((namespace) => getNamespaceHook(api, namespace));
-      }
-    },
-  } as WithNamespace<StoreApi<T>>);
+/**
+ * Method used to get hooks for multiple namespaces.
+ * @param store The store or namespace to get the hooks from (parent store)
+ * @param namespaces The namespaces
+ */
+export function getNamespaceHooks<
+  T extends object,
+  Namespaces extends readonly Namespace[]
+>(
+  store: UseBoundStore<StoreApi<T>> | UseBoundNamespace<StoreApi<T>>,
+  ...namespaces: Namespaces
+): {
+  [K in keyof Namespaces]: UseBoundNamespace<
+    StoreApi<FilterByPrefix<Namespaces[K]['name'], T>>
+  >;
+} {
+  return namespaces.map((namespace) =>
+    getOneNamespaceHook(store, namespace)
+  ) as {
+    [K in keyof Namespaces]: UseBoundNamespace<
+      StoreApi<FilterByPrefix<Namespaces[K]['name'], T>>
+    >;
+  };
 }
 
 export function transformStateCreatorArgs<
@@ -169,14 +179,16 @@ function spreadTransformedNamespaces<
   return spreadNamespaces(namespaces, transformCallback(...args)) as any;
 }
 
-function getNamespaceHook<Name extends string, Store extends object>(
-  api: StoreApi<Store>,
+function getOneNamespaceHook<Name extends string, Store extends object>(
+  useStore: UseBoundStore<StoreApi<Store>> | UseBoundNamespace<StoreApi<Store>>,
   namespace: Namespace<FilterByPrefix<Name, Store>, Name>
 ) {
   type BoundStore = UseBoundNamespace<StoreApi<FilterByPrefix<Name, Store>>>;
-  const namespaceApi = getNamespacedApi(namespace, api);
+  const namespaceApi = getNamespacedApi(namespace, useStore);
   const hook = ((selector) => {
-    return useStore(namespaceApi, selector);
+    return useStore((state) => {
+      return selector(toNamespace(namespace, state));
+    });
   }) as BoundStore;
 
   return Object.assign(hook, namespaceApi);
@@ -286,7 +298,7 @@ export function partializeNamespaces<
 declare module 'zustand/vanilla' {
   // eslint-disable-next-line
   interface StoreMutators<S, A> {
-    'zustand-namespaces': WithNamespace<S>;
+    'zustand-namespaces': S;
   }
 }
 
@@ -308,20 +320,16 @@ export function namespaced<Namespaces extends readonly Namespace[]>(
 ) => StateCreator<
   Result,
   Mps,
-  [['zustand-namespaces', Namespaces], ...Mcs],
+  [['zustand-namespaces', unknown], ...Mcs],
   Result
 > {
   // @ts-expect-error  // eslint-disable-next-line
   return (creator) => {
     return (...args) => {
-      const [set, get, api] = args;
-
-      const apiWithNamespace = withFactories(api);
-
       return {
-        ...spreadTransformedNamespaces(namespaces, set, get, apiWithNamespace),
+        ...spreadTransformedNamespaces(namespaces, ...args),
         // @ts-expect-error // eslint-disable-next-line
-        ...creator?.(set, get, apiWithNamespace),
+        ...creator?.(...args),
       };
     };
   };

@@ -4,7 +4,7 @@ import { userEvent } from '@testing-library/user-event';
 import React from 'react';
 import { afterEach, expect, test } from 'vitest';
 import { create } from 'zustand';
-import { createNamespace, namespaced } from '../src/utils';
+import { createNamespace, getNamespaceHooks, namespaced } from '../src/utils';
 import { ExtractNamespace, ExtractNamespaces } from '../src/types';
 
 type Namespace1 = {
@@ -67,9 +67,12 @@ const namespace = namespaced(...namespaces);
 // Create zustand store
 const useStore = create<AppState>()(namespace(() => ({})));
 
-const useNamespace1 = useStore.getNamespaceHook(namespace1);
-const useSubNamespace1 = useNamespace1.getNamespaceHook(subNamespace);
-const useNamespace2 = useStore.getNamespaceHook(namespace2);
+const [useNamespace1, useNamespace2] = getNamespaceHooks(
+  useStore,
+  namespace1,
+  namespace2
+);
+const [useSubNamespace1] = getNamespaceHooks(useNamespace1, subNamespace);
 
 const SubNamespace1Component = () => {
   const data = useSubNamespace1((state) => state.dataInSubNamespace1);

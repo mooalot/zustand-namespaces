@@ -36,8 +36,11 @@ const useStore = create(
   }))
 );
 
-export const useNamespaceA = useStore.getNamespaceHook(namespaceA);
-export const useNamespaceB = useStore.getNamespaceHook(namespaceB);
+export const [useNamespaceA, useNamespaceB] = getNamespaceHooks(
+  useStore,
+  namespaceA,
+  namespaceB
+);
 ```
 
 ## TypeScript Support
@@ -60,5 +63,6 @@ More examples can be found in the [examples directory](https://github.com/mooalo
 - **toNamespace**: Extracts a namespace's state from the parent state.
 - **fromNamespace**: Converts namespace state to parent state.
 - **partializeNamespaces**: Partializes multiple namespaces at once.
+- **getNamespaceHooks**: Returns hooks for each namespace.
 
 For full documentation, visit the [repository](https://github.com/mooalot/zustand-namespaces).
