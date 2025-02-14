@@ -5,14 +5,12 @@ export type ExtractNamespaces<T extends readonly Namespace[]> =
   UnionToIntersection<ExtractNamespaceType<T[number]>>;
 
 export type Namespace<
-  // eslint-disable-next-line
   T = any,
   Name extends string = string,
   Options = unknown
 > = {
   name: Name;
   // child creator does not care about Mutators
-  // eslint-disable-next-line
   creator: StateCreator<T, any, any>;
   options?: Options;
 };
@@ -46,10 +44,11 @@ type ExtractNamespaceType<T> = T extends Namespace<infer N, infer U>
   ? PrefixObject<U, N>
   : never;
 
-export type UnionToIntersection<U> = // eslint-disable-next-line
-  (U extends any ? (arg: U) => void : never) extends (arg: infer I) => void
-    ? I
-    : never;
+export type UnionToIntersection<U> = (
+  U extends any ? (arg: U) => void : never
+) extends (arg: infer I) => void
+  ? I
+  : never;
 
 type Readonly<T extends object> = {
   readonly [K in keyof T]: T[K];

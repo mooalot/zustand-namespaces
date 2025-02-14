@@ -93,7 +93,7 @@ export function getNamespaceHooks<
     [...CurrentNamespaces, NewNamespaces[K]] // Track the current namespace chain
   >;
 } {
-  return namespaces.map((namespace, index) =>
+  return namespaces.map((namespace) =>
     getOneNamespaceHook(store, namespace)
   ) as any;
 }
@@ -175,7 +175,6 @@ function spreadTransformedNamespaces<
   namespaces: Namespaces,
   ...args: Parameters<StateCreator<State>>
 ): IncludeByPrefix<Namespaces[number]['name'], State> {
-  // eslint-disable-next-line
   return spreadNamespaces(namespaces, transformCallback(...args)) as any;
 }
 
@@ -258,7 +257,6 @@ type CreateNamespace = {
  * @param callback A callback that returns a namespace
  * @returns A function that returns a namespace
  */
-// eslint-disable-next-line
 export const createNamespace: CreateNamespace = ((callback?: any) => {
   if (callback) {
     // The first overload implementation
@@ -310,8 +308,7 @@ export function partializeNamespaces<
   Namespaces extends readonly Namespace[],
   Fn extends <D extends Namespaces[number]>(
     namespace: D
-  ) => // eslint-disable-next-line
-  ((state: any) => any) | undefined
+  ) => ((state: any) => any) | undefined
 >(state: State, namespaces: Namespaces, getPartializeFn: Fn) {
   return spreadNamespaces(
     namespaces,
