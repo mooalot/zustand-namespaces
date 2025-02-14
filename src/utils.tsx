@@ -80,22 +80,22 @@ function getNamespacedApi<T extends object, Name extends string>(
  */
 export function getNamespaceHooks<
   T extends object,
-  Namespaces extends readonly Namespace[]
+  NewNamespaces extends readonly Namespace[],
+  CurrentNamespaces extends readonly Namespace[] = []
 >(
-  store: UseBoundStore<StoreApi<T>> | UseBoundNamespace<StoreApi<T>>,
-  ...namespaces: Namespaces
+  store:
+    | UseBoundStore<StoreApi<T>>
+    | UseBoundNamespace<StoreApi<T>, CurrentNamespaces>,
+  ...namespaces: NewNamespaces
 ): {
-  [K in keyof Namespaces]: UseBoundNamespace<
-    StoreApi<FilterByPrefix<Namespaces[K]['name'], T>>
+  [K in keyof NewNamespaces]: UseBoundNamespace<
+    StoreApi<FilterByPrefix<NewNamespaces[K]['name'], T>>,
+    [...CurrentNamespaces, NewNamespaces[K]] // Track the current namespace chain
   >;
 } {
-  return namespaces.map((namespace) =>
+  return namespaces.map((namespace, index) =>
     getOneNamespaceHook(store, namespace)
-  ) as {
-    [K in keyof Namespaces]: UseBoundNamespace<
-      StoreApi<FilterByPrefix<Namespaces[K]['name'], T>>
-    >;
-  };
+  ) as any;
 }
 
 export function transformStateCreatorArgs<
@@ -179,11 +179,20 @@ function spreadTransformedNamespaces<
   return spreadNamespaces(namespaces, transformCallback(...args)) as any;
 }
 
-function getOneNamespaceHook<Name extends string, Store extends object>(
-  useStore: UseBoundStore<StoreApi<Store>> | UseBoundNamespace<StoreApi<Store>>,
+function getOneNamespaceHook<
+  Name extends string,
+  Store extends object,
+  Namespaces extends readonly Namespace[]
+>(
+  useStore:
+    | UseBoundStore<StoreApi<Store>>
+    | UseBoundNamespace<StoreApi<Store>, Namespaces>,
   namespace: Namespace<FilterByPrefix<Name, Store>, Name>
 ) {
-  type BoundStore = UseBoundNamespace<StoreApi<FilterByPrefix<Name, Store>>>;
+  type BoundStore = UseBoundNamespace<
+    StoreApi<FilterByPrefix<Name, Store>>,
+    [Namespace<FilterByPrefix<Name, Store>, Name>, ...Namespaces]
+  >;
   const namespaceApi = getNamespacedApi(namespace, useStore);
   const hook = ((selector) => {
     return useStore((state) => {
@@ -191,7 +200,22 @@ function getOneNamespaceHook<Name extends string, Store extends object>(
     });
   }) as BoundStore;
 
-  return Object.assign(hook, namespaceApi);
+  let currentNamespaces: Array<Namespace> = (useStore as any).namespaces ?? [];
+  currentNamespaces = [...currentNamespaces, namespace];
+
+  return Object.assign(hook, namespaceApi, {
+    getRawState: () => {
+      let currentState: any = namespaceApi.getState();
+      for (let i = currentNamespaces.length - 1; i >= 0; i--) {
+        currentState = getPrefixedObject(
+          currentNamespaces[i].name,
+          currentState
+        );
+      }
+      return currentState;
+    },
+    namespaces: currentNamespaces,
+  });
 }
 
 /**

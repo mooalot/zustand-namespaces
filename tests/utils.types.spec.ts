@@ -196,7 +196,7 @@ describe('namespaceHook', () => {
     const [hook] = getNamespaceHooks(useStore, userNamespace);
 
     expect(hook).toBeDefined();
-    expectType<UseBoundNamespace<StoreApi<FilterByPrefix<'user', State>>>>(
+    expectType<UseBoundNamespace<StoreApi<FilterByPrefix<'user', State>>, any>>(
       hook
     );
   });
@@ -237,12 +237,12 @@ describe('namespaceHooks', () => {
     expect(useUser).toBeDefined();
     expect(useAdmin).toBeDefined();
 
-    expectType<UseBoundNamespace<StoreApi<FilterByPrefix<'user', State>>>>(
+    expectType<UseBoundNamespace<StoreApi<FilterByPrefix<'user', State>>, any>>(
       useUser
     );
-    expectType<UseBoundNamespace<StoreApi<FilterByPrefix<'admin', State>>>>(
-      useAdmin
-    );
+    expectType<
+      UseBoundNamespace<StoreApi<FilterByPrefix<'admin', State>>, any>
+    >(useAdmin);
   });
 });
 
@@ -331,5 +331,36 @@ describe('createNamespace', () => {
     expect(testNamespace.name).toBe('test');
     expect(testNamespace.creator).toBeDefined();
     expect(testNamespace.options).toEqual({ option: 'value' });
+  });
+
+  test('should create have typed raw state', () => {
+    const subNamespace = createNamespace(() => ({
+      name: 'subNamespace',
+      creator: () => ({ key: 'value' }),
+    }));
+    const namespace = createNamespace(() => ({
+      name: 'namespace',
+      creator: namespaced(subNamespace)(() => ({ key: 'value' })),
+    }));
+
+    const useStore = create(
+      namespaced(namespace)(() => ({
+        key: 'value',
+      }))
+    );
+
+    const [useNamespaceStore] = getNamespaceHooks(useStore, namespace);
+    const [usesubNamespaceStore] = getNamespaceHooks(
+      useNamespaceStore,
+      subNamespace
+    );
+
+    expectType<string>(useNamespaceStore.getRawState().namespace_key);
+    expectType<string>(
+      useNamespaceStore.getRawState().namespace_subNamespace_key
+    );
+    expectType<string>(
+      usesubNamespaceStore.getRawState().namespace_subNamespace_key
+    );
   });
 });

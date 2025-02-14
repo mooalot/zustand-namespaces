@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   createNamespace,
   fromNamespace,
+  getNamespaceHooks,
   getPrefixedObject,
   getUnprefixedObject,
   namespaced,
@@ -11,6 +12,7 @@ import {
   toNamespace,
 } from '../src/utils';
 import { ExtractNamespaces, Namespace } from '../src/types';
+import { create } from 'zustand';
 
 describe('Utility Functions', () => {
   describe('getPrefixedObject', () => {
@@ -210,6 +212,37 @@ describe('Utility Functions', () => {
     expect(partializedNamespaces).toEqual({
       namespace1_dataInNamespace1: 'two',
       namespace1_subNamespace1_one: 'one',
+    });
+  });
+
+  it('should be able to getRawState from a namespaced store', () => {
+    const subNamespace = createNamespace(() => ({
+      name: 'subNamespace',
+      creator: () => ({ key: 'value' }),
+    }));
+    const namespace = createNamespace(() => ({
+      name: 'namespace',
+      creator: namespaced(subNamespace)(() => ({ key: 'value' })),
+    }));
+
+    const useStore = create(
+      namespaced(namespace)(() => ({
+        key: 'value',
+      }))
+    );
+
+    const [useNamespaceStore] = getNamespaceHooks(useStore, namespace);
+    const [usesubNamespaceStore] = getNamespaceHooks(
+      useNamespaceStore,
+      subNamespace
+    );
+
+    expect(useNamespaceStore.getRawState()).toEqual({
+      namespace_key: 'value',
+      namespace_subNamespace_key: 'value',
+    });
+    expect(usesubNamespaceStore.getRawState()).toEqual({
+      namespace_subNamespace_key: 'value',
     });
   });
 });

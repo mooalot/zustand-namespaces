@@ -55,6 +55,26 @@ type Readonly<T extends object> = {
   readonly [K in keyof T]: T[K];
 };
 
-export type UseBoundNamespace<S extends Readonly<StoreApi<unknown>>> = {
+type PrefixNamespaces<
+  K extends string,
+  Namespaces extends readonly [...Namespace[]]
+> = Namespaces extends [
+  infer First extends Namespace,
+  ...infer Rest extends Namespace[]
+]
+  ? `${First['name']}_${PrefixNamespaces<K, Rest>}`
+  : K;
+
+type RawState<T, Namespaces extends readonly [...Namespace[]]> = {
+  [K in keyof T as PrefixNamespaces<K & string, Namespaces>]: T[K];
+};
+
+export type UseBoundNamespace<
+  S extends Readonly<StoreApi<unknown>>,
+  Namespaces extends readonly [...Namespace[]]
+> = {
   <U>(selector: (state: ExtractState<S>) => U): U;
-} & S;
+} & S & {
+    getRawState: () => RawState<ExtractState<S>, Namespaces>;
+    namespaces: Namespaces;
+  };
