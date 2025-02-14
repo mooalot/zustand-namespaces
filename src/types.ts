@@ -64,8 +64,27 @@ type PrefixNamespaces<
   ? `${First['name']}_${PrefixNamespaces<K, Rest>}`
   : K;
 
-type RawState<T, Namespaces extends readonly [...Namespace[]]> = {
+type UnprefixNamespaces<
+  K extends string,
+  Namespaces extends readonly [...Namespace[]]
+> = Namespaces extends [
+  infer First extends Namespace,
+  ...infer Rest extends Namespace[]
+]
+  ? K extends `${First['name']}_${infer R}`
+    ? UnprefixNamespaces<R, Rest>
+    : never
+  : K;
+
+export type UnNamespacedState<
+  T,
+  Namespaces extends readonly [...Namespace[]]
+> = {
   [K in keyof T as PrefixNamespaces<K & string, Namespaces>]: T[K];
+};
+
+export type NamespacedState<T, Namespaces extends readonly [...Namespace[]]> = {
+  [K in keyof T as UnprefixNamespaces<K & string, Namespaces>]: T[K];
 };
 
 export type UseBoundNamespace<
@@ -74,6 +93,6 @@ export type UseBoundNamespace<
 > = {
   <U>(selector: (state: ExtractState<S>) => U): U;
 } & S & {
-    getRawState: () => RawState<ExtractState<S>, Namespaces>;
+    getRawState: () => UnNamespacedState<ExtractState<S>, Namespaces>;
     namespaces: Namespaces;
   };

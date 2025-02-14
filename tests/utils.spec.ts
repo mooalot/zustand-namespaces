@@ -75,32 +75,43 @@ describe('Utility Functions', () => {
 
   describe('stateToNamespace', () => {
     it('should extract unprefixed state for a namespace', () => {
+      const subNamespace: Namespace = {
+        name: 'subNamespace1',
+        creator: () => ({ key: 'value' }),
+      };
       const namespace: Namespace = {
         name: 'namespace1',
-        creator: () => ({ key1: 'value1' }),
+        creator: () => ({ key: 'value' }),
       };
-      const state = { namespace1_key1: 'value1', namespace2_key2: 'value2' };
+      const state = {
+        namespace1_key: 'value',
+        namespace1_subNamespace1_key: 'value',
+      };
 
-      const result = toNamespace(namespace, state);
+      const result = toNamespace(state, namespace, subNamespace);
 
       expect(result).toEqual({
-        key1: 'value1',
+        key: 'value',
       });
     });
   });
 
   describe('namespaceToState', () => {
     it('should add a prefix to namespace state', () => {
+      const subNamespace: Namespace = {
+        name: 'subNamespace1',
+        creator: () => ({ key: 'value' }),
+      };
       const namespace: Namespace = {
         name: 'namespace1',
-        creator: () => ({ key1: 'value1' }),
+        creator: () => ({ key: 'value' }),
       };
-      const state = { key1: 'value1' };
+      const state = { key: 'value' };
 
-      const result = fromNamespace(namespace, state);
+      const result = fromNamespace(state, namespace, subNamespace);
 
       expect(result).toEqual({
-        namespace1_key1: 'value1',
+        namespace1_subNamespace1_key: 'value',
       });
     });
   });
@@ -165,10 +176,10 @@ describe('Utility Functions', () => {
           partialized: (state) => ({
             dataInNamespace1: state.two,
             ...spreadNamespaces(subNamespaces, (subNamespace) => {
-              const namespacedData = toNamespace(subNamespace, state);
+              const namespacedData = toNamespace(state, subNamespace);
               const partializedData =
                 subNamespace.options?.partialized?.(namespacedData);
-              return fromNamespace(subNamespace, partializedData ?? {});
+              return fromNamespace(partializedData ?? {}, subNamespace);
             }),
           }),
         },
@@ -185,9 +196,9 @@ describe('Utility Functions', () => {
     };
 
     const spread = spreadNamespaces(namespaces, (namespace) => {
-      const namespaceData = toNamespace(namespace, state);
+      const namespaceData = toNamespace(state, namespace);
       const partializedData = namespace.options?.partialized?.(namespaceData);
-      return fromNamespace(namespace, partializedData ?? {});
+      return fromNamespace(partializedData ?? {}, namespace);
     });
 
     expect(spread).toEqual({

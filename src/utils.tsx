@@ -11,7 +11,9 @@ import {
   FilterByPrefix,
   IncludeByPrefix,
   Namespace,
+  NamespacedState,
   PrefixObject,
+  UnNamespacedState,
   UseBoundNamespace,
 } from './types';
 
@@ -195,7 +197,7 @@ function getOneNamespaceHook<
   const namespaceApi = getNamespacedApi(namespace, useStore);
   const hook = ((selector) => {
     return useStore((state) => {
-      return selector(toNamespace(namespace, state));
+      return selector(toNamespace(state, namespace) as any);
     });
   }) as BoundStore;
 
@@ -219,28 +221,50 @@ function getOneNamespaceHook<
 
 /**
  * Helper method for going from a state to a namespace.
- * @param namespace A namespace
  * @param state The state of the store
+ * @param namespaces The namespace(s) to go to
  * @returns The namespace state
  */
-export function toNamespace<State extends object, N extends string>(
-  namespace: Pick<Namespace<FilterByPrefix<N, State>, N>, 'name'>,
-  state: State
-) {
-  return getUnprefixedObject(namespace.name, state);
+export function toNamespace<State, Namespaces extends readonly Namespace[]>(
+  state: State,
+  ...namespaces: Namespaces
+): NamespacedState<State, Namespaces> {
+  let current: any = state;
+  for (let i = 0; i < namespaces.length; i++) {
+    current = getUnprefixedObject(namespaces[i].name, current);
+  }
+  return current;
 }
 
 /**
  * Helper method for going to a state from a namespace.
- * @param namespace A namespace
- * @param state The state of the store
+ *  * @param state The state of the store
+ * @param namespaces The namespace(s) come from
  * @returns The namespace state
+ * @example
+ * const state = {
+ *  data: 'hi',
+ * };
+ * const subNamespace = createNamespace(() => ({
+ * name: 'subNamespace',
+ * creator: ...
+ * }));
+ * const namespace = createNamespace(() => ({
+ * name: 'namespace',
+ * creator: ...
+ * }));
+ * const data = fromNamespace(state, namespace, subNamespace);
+ * // data = { subNamespace_namespace_data: 'hi' }
  */
-export function fromNamespace<State extends object, P extends string>(
-  namespace: Pick<Namespace<FilterByPrefix<P, State>, P>, 'name'>,
-  state: State
-) {
-  return getPrefixedObject(namespace.name, state);
+export function fromNamespace<State, Namespaces extends readonly Namespace[]>(
+  state: State,
+  ...namespaces: Namespaces
+): UnNamespacedState<State, Namespaces> {
+  let current: any = state;
+  for (let i = namespaces.length - 1; i >= 0; i--) {
+    current = getPrefixedObject(namespaces[i].name, current);
+  }
+  return current;
 }
 
 type CreateNamespace = {
@@ -290,9 +314,9 @@ export function partializeNamespace<
     | undefined
 ) {
   return (namespace: Namespace<FilterByPrefix<P, State>, P, Options>) => {
-    const namespaceData = toNamespace(namespace, state);
+    const namespaceData: any = toNamespace(state, namespace);
     const partializedData = getPartializeFn(namespace)?.(namespaceData);
-    return fromNamespace(namespace, partializedData ?? {});
+    return fromNamespace(partializedData ?? {}, namespace);
   };
 }
 

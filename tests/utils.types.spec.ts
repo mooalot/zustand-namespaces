@@ -262,7 +262,7 @@ describe('stateToNamespace', () => {
       admin_level: 1,
     };
 
-    const namespace = toNamespace(userNamespace, state);
+    const namespace = toNamespace(state, userNamespace);
 
     expect(namespace).toEqual({
       name: 'Alice',
@@ -286,7 +286,7 @@ describe('namespaceToState', () => {
 
     const state = { name: 'Alice', age: 25 };
 
-    const namespacedState = fromNamespace(userNamespace, state);
+    const namespacedState = fromNamespace(state, userNamespace);
 
     expect(namespacedState).toEqual({
       user_name: 'Alice',
