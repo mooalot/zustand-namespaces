@@ -3,6 +3,7 @@ import {
   StateCreator,
   StoreApi,
   StoreMutatorIdentifier,
+  UseBoundStore,
 } from 'zustand';
 
 export type ExtractNamespace<T> = ExtractNamespaceType<T>;
@@ -95,15 +96,17 @@ export type NamespacedState<T, Namespaces extends readonly [...Namespace[]]> = {
 export type UseBoundNamespace<
   S extends Readonly<StoreApi<unknown>>,
   Namespaces extends readonly [...Namespace[]]
-> = {
-  <U>(selector: (state: ExtractState<S>) => U): U;
-} & S & {
-    getRawState: () => UnNamespacedState<ExtractState<S>, Namespaces>;
-    namespaces: {
-      [K in keyof Namespaces as Namespaces[K] extends Namespace<any, infer N>
-        ? N
-        : never]: {
-        path: Namespaces;
-      };
+> = UseBoundStore<S> & {
+  getRawState: () => UnNamespacedState<ExtractState<S>, Namespaces>;
+  namespaces: {
+    [K in keyof Namespaces as Namespaces[K] extends Namespace<any, infer N>
+      ? N
+      : never]: {
+      path: Namespaces;
     };
   };
+  /**
+   * The path of namespaces to get to root store
+   */
+  namespacePath: Namespaces;
+};

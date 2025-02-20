@@ -1,7 +1,7 @@
 import { temporal } from 'zundo';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { createNamespace, namespaced } from '../src/utils';
+import { createNamespace, getNamespaceHooks, namespaced } from '../src/utils';
 
 const s1 = createNamespace<{ data: string }>()(
   'namespace',
@@ -35,9 +35,16 @@ const n2 = createNamespace<{ data: string }>()(
 );
 
 const useStore = create(namespaced(n1, n2)(() => ({ hi: 'hi' })));
-const useStore2 = create(temporal(() => ({ hi: 'hi' })));
-const useStore3 = create(persist(() => ({ hi: 'hi' }), { name: 'namespace3' }));
-useStore2.temporal;
-useStore3.persist.clearStorage();
-useStore.namespaces.namespace1.temporal;
+const [useNamespace1, useNamespace2] = getNamespaceHooks(useStore, n1, n2);
+const [useSubNamespace] = getNamespaceHooks(useNamespace1, s1);
+
+useStore.namespaces.namespace1.temporal.getState();
 useStore.namespaces.namespace2.persist.clearStorage();
+useNamespace1.temporal;
+useNamespace2.persist.clearStorage();
+
+useNamespace1.namespaces.namespace.temporal.getState();
+useNamespace1((state) => state.data);
+
+useSubNamespace.persist.clearStorage();
+useSubNamespace((state) => state.data);

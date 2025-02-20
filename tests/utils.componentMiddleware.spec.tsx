@@ -134,7 +134,7 @@ describe('Zustand Namespaces with Components', () => {
   beforeEach(resetStore);
 
   test('should render initial data for namespaces', () => {
-    console.log('useStore', useStore);
+    console.log('useStore', useNamespace1);
 
     render(<App />);
     expect(screen.getByTestId('namespace1-data')).toHaveTextContent(
@@ -216,5 +216,23 @@ describe('Zustand Namespaces with Components', () => {
       useStore.namespaces.namespace1.namespaces.subNamespace.persist.clearStorage();
     });
     expect(storage['subNamespace']).toBeUndefined();
+  });
+
+  test('should be able to call nested middleware methods', () => {
+    render(<App />);
+
+    act(() => {
+      useSubNamespace.setState({ data: 'New SubNamespace Data' });
+    });
+    expect(screen.getByTestId('subNamespace-data')).toHaveTextContent(
+      'New SubNamespace Data'
+    );
+    act(() => {
+      useSubNamespace.temporal.getState().undo();
+    });
+
+    expect(screen.getByTestId('subNamespace-data')).toHaveTextContent(
+      'Initial SubNamespace Data'
+    );
   });
 });

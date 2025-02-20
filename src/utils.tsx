@@ -1,4 +1,5 @@
 import {
+  ExtractState,
   StateCreator,
   StoreApi,
   StoreMutatorIdentifier,
@@ -18,10 +19,9 @@ import {
   UseBoundNamespace,
 } from './types';
 
-const nonos = ['getInitialState', 'setState', 'getState', 'subscribe'];
-
 type WithNames<T> = T & {
-  namespaces: Record<string, any>;
+  namespaces: any;
+  namespacePath: [];
 };
 
 function getNamespacedApi<T extends object, Name extends string>(
@@ -36,7 +36,6 @@ function getNamespacedApi<T extends object, Name extends string>(
       return getUnprefixedObject(namespace.name, api.getState());
     },
     setState: (state, replace) => {
-      console.log('setting state', state);
       api.setState((currentState) => {
         const unprefixedState = getUnprefixedObject(
           namespace.name,
@@ -79,6 +78,7 @@ function getNamespacedApi<T extends object, Name extends string>(
       });
     },
     namespaces: api.namespaces,
+    namespacePath: api.namespacePath,
   };
 
   return new Proxy(namespacedApi, {
@@ -91,36 +91,12 @@ function getNamespacedApi<T extends object, Name extends string>(
             [String(prop)]: value,
           },
         },
+        namespacePath: [...(api.namespacePath ?? []), namespace],
       });
 
       return Reflect.set(target, prop, value);
     },
   });
-}
-
-/**
- * Method used to get hooks for multiple namespaces.
- * @param store The store or namespace to get the hooks from (parent store)
- * @param namespaces The namespaces
- */
-export function getNamespaceHooks<
-  T extends object,
-  NewNamespaces extends readonly Namespace<any, string, any, any>[],
-  CurrentNamespaces extends readonly Namespace[] = []
->(
-  store:
-    | UseBoundStore<StoreApi<T>>
-    | UseBoundNamespace<StoreApi<T>, CurrentNamespaces>,
-  ...namespaces: NewNamespaces
-): {
-  [K in keyof NewNamespaces]: UseBoundNamespace<
-    StoreApi<FilterByPrefix<NewNamespaces[K]['name'], T>>,
-    [...CurrentNamespaces, NewNamespaces[K]] // Track the current namespace chain
-  >;
-} {
-  return namespaces.map((namespace) =>
-    getOneNamespaceHook(store, namespace)
-  ) as any;
 }
 
 export function transformStateCreatorArgs<
@@ -216,6 +192,38 @@ function spreadTransformedNamespaces<
   return spreadNamespaces(namespaces, transformCallback(...args)) as any;
 }
 
+/**
+ * Method used to get hooks for multiple namespaces.
+ * @param store The store or namespace to get the hooks from (parent store)
+ * @param namespaces The namespaces
+ */
+export function getNamespaceHooks<
+  S extends StoreApi<any>,
+  NewNamespaces extends readonly Namespace<any, string, any, any>[],
+  CurrentNamespaces extends readonly Namespace[] = []
+>(
+  store: UseBoundStore<S> | UseBoundNamespace<S, CurrentNamespaces>,
+  ...namespaces: NewNamespaces
+): {
+  [K in keyof NewNamespaces]: UseBoundNamespace<
+    S extends { namespaces: any }
+      ? S extends StoreApi<any>
+        ? NewNamespaces[K]['name'] extends keyof S['namespaces']
+          ? S['namespaces'][NewNamespaces[K]['name']] &
+              StoreApi<
+                FilterByPrefix<NewNamespaces[K]['name'], ExtractState<S>>
+              >
+          : StoreApi<{ failed3: 'failed' }>
+        : StoreApi<{ failed2: 'failed' }>
+      : StoreApi<{ failed1: 'failed' }>,
+    [...CurrentNamespaces, NewNamespaces[K]] // Track the current namespace chain
+  >;
+} {
+  return namespaces.map((namespace) =>
+    getOneNamespaceHook(store, namespace)
+  ) as any;
+}
+
 function getOneNamespaceHook<
   Name extends string,
   Store extends object,
@@ -236,9 +244,8 @@ function getOneNamespaceHook<
     });
   }) as BoundStore;
 
-  const store = useStore as WithNames<StoreApi<Store>>;
+  const store = useStore as unknown as WithNames<StoreApi<Store>>;
   const originalApi = store.namespaces[namespace.name];
-  console.log('originalApi', originalApi);
   if (!originalApi) throw new Error('Namespace not found');
 
   let currentNamespaces: Array<Namespace> =
@@ -256,13 +263,6 @@ function getOneNamespaceHook<
       }
       return currentState;
     },
-    // namespaces: {
-    //   ...namespaceApi.namespaces,
-    //   [namespace.name]: {
-    //     ...namespaceApi.namespaces[namespace.name],
-    //     path: currentNamespaces,
-    //   },
-    // },
   });
 }
 
