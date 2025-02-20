@@ -21,7 +21,7 @@ import {
 
 type WithNames<T> = T & {
   namespaces: any;
-  namespacePath: [];
+  namespacePath?: Namespace[];
 };
 
 function getNamespacedApi<T extends object, Name extends string>(
@@ -78,7 +78,7 @@ function getNamespacedApi<T extends object, Name extends string>(
       });
     },
     namespaces: api.namespaces,
-    namespacePath: api.namespacePath,
+    namespacePath: [namespace, ...(api.namespacePath ?? [])],
   };
 
   return new Proxy(namespacedApi, {
@@ -91,7 +91,6 @@ function getNamespacedApi<T extends object, Name extends string>(
             [String(prop)]: value,
           },
         },
-        namespacePath: [...(api.namespacePath ?? []), namespace],
       });
 
       return Reflect.set(target, prop, value);
@@ -200,7 +199,7 @@ function spreadTransformedNamespaces<
 export function getNamespaceHooks<
   S extends StoreApi<any>,
   NewNamespaces extends readonly Namespace<any, string, any, any>[],
-  CurrentNamespaces extends readonly Namespace[] = []
+  CurrentNamespaces extends readonly Namespace<any, string, any, any>[] = []
 >(
   store: UseBoundStore<S> | UseBoundNamespace<S, CurrentNamespaces>,
   ...namespaces: NewNamespaces
@@ -245,23 +244,16 @@ function getOneNamespaceHook<
   }) as BoundStore;
 
   const store = useStore as unknown as WithNames<StoreApi<Store>>;
-  const originalApi = store.namespaces[namespace.name];
+  const originalApi: WithNames<StoreApi<Store>> =
+    store.namespaces[namespace.name];
+
   if (!originalApi) throw new Error('Namespace not found');
-
-  let currentNamespaces: Array<Namespace> =
-    (useStore as any).namespaces[namespace.name].path ?? [];
-  currentNamespaces = [...currentNamespaces, namespace];
-
   return Object.assign(hook, originalApi, {
     getRawState: () => {
-      let currentState: any = originalApi.getState();
-      for (let i = currentNamespaces.length - 1; i >= 0; i--) {
-        currentState = getPrefixedObject(
-          currentNamespaces[i].name,
-          currentState
-        );
-      }
-      return currentState;
+      return fromNamespace(
+        originalApi.getState(),
+        ...(originalApi.namespacePath ?? [])
+      );
     },
   });
 }
@@ -269,13 +261,13 @@ function getOneNamespaceHook<
 /**
  * Helper method for going from a state to a namespace.
  * @param state The state of the store
- * @param namespaces The namespace(s) to go to
+ * @param namespaces The namespace(s) to go to. If multiple namespaces are provided, the last namespace will be the one returned.
  * @returns The namespace state
  */
-export function toNamespace<State, Namespaces extends readonly Namespace[]>(
-  state: State,
-  ...namespaces: Namespaces
-): NamespacedState<State, Namespaces> {
+export function toNamespace<
+  State,
+  Namespaces extends readonly Namespace<any, string, any, any>[]
+>(state: State, ...namespaces: Namespaces): NamespacedState<State, Namespaces> {
   let current: any = state;
   for (let i = 0; i < namespaces.length; i++) {
     current = getUnprefixedObject(namespaces[i].name, current);
@@ -286,49 +278,58 @@ export function toNamespace<State, Namespaces extends readonly Namespace[]>(
 /**
  * Helper method for going to a state from a namespace.
  *  * @param state The state of the store
- * @param namespaces The namespace(s) come from
+ * @param namespaces The namespace(s) to come from. If multiple namespaces are provided, the last namespace will be the one returned.
  * @returns The namespace state
- * @example
- * const state = {
- *  data: 'hi',
- * };
- * const subNamespace = createNamespace(() => ({
- * name: 'subNamespace',
- * creator: ...
- * }));
- * const namespace = createNamespace(() => ({
- * name: 'namespace',
- * creator: ...
- * }));
- * const data = fromNamespace(state, namespace, subNamespace);
- * // data = { subNamespace_namespace_data: 'hi' }
  */
-export function fromNamespace<State, Namespaces extends readonly Namespace[]>(
+export function fromNamespace<
+  State,
+  Namespaces extends readonly Namespace<any, string, any, any>[]
+>(
   state: State,
   ...namespaces: Namespaces
 ): UnNamespacedState<State, Namespaces> {
   let current: any = state;
-  for (let i = namespaces.length - 1; i >= 0; i--) {
+  for (let i = 0; i < namespaces.length; i++) {
     current = getPrefixedObject(namespaces[i].name, current);
   }
   return current;
 }
 
-export function createNamespace<T>(): <
-  Name extends string,
-  Mps extends [StoreMutatorIdentifier, unknown][] = [],
-  Mcs extends [StoreMutatorIdentifier, unknown][] = []
->(
-  name: Name,
-  creator: StateCreator<T, Mps, Mcs>
-) => Namespace<T, Name, Mps, Mcs> {
-  return (name, creator) => {
+type CreateNamespace = {
+  // inferred
+  <
+    T,
+    Name extends string,
+    Mps extends [StoreMutatorIdentifier, unknown][] = [],
+    Mcs extends [StoreMutatorIdentifier, unknown][] = []
+  >(
+    name: Name,
+    creator: StateCreator<T, Mps, Mcs>
+  ): Namespace<T, Name, Mps, Mcs>;
+  // explicit
+  <T>(): <
+    Name extends string,
+    Mps extends [StoreMutatorIdentifier, unknown][] = [],
+    Mcs extends [StoreMutatorIdentifier, unknown][] = []
+  >(
+    name: Name,
+    creator: StateCreator<T, Mps, Mcs>
+  ) => Namespace<T, Name, Mps, Mcs>;
+};
+
+export const createNamespace = ((one?: any, two?: any) => {
+  if (one && two) {
     return {
+      name: one,
+      creator: two,
+    };
+  } else {
+    return (name: any, creator: any) => ({
       name,
       creator,
-    };
-  };
-}
+    });
+  }
+}) as CreateNamespace;
 
 declare module 'zustand/vanilla' {
   // eslint-disable-next-line
@@ -371,40 +372,103 @@ type WithNamespaces<S, A> = A extends Namespace<any, string, any, any>[]
     >
   : S;
 
-export function namespaced<
-  Namespaces extends readonly Namespace<any, string, any, any>[]
->(
-  ...namespaces: Namespaces
-): <
-  T,
-  Excluded extends ExcludeByPrefix<Namespaces[number]['name'], T>,
-  Result extends Excluded & ExtractNamespaces<Namespaces>,
-  Mps extends [StoreMutatorIdentifier, unknown][] = [],
-  Mcs extends [StoreMutatorIdentifier, unknown][] = []
->(
-  creator?: StateCreator<
-    Result,
-    [...Mps, ['zustand-namespaces', unknown]],
-    Mcs,
-    Excluded
-  >
-) => StateCreator<
-  Result,
-  Mps,
-  [['zustand-namespaces', Namespaces], ...Mcs],
-  Result
-> {
-  // @ts-expect-error  // eslint-disable-next-line
-  return (creator) => {
-    return (set, get, api) => {
+type Assert<T, Expected> = T extends Expected ? T : never;
+type Namespaced = {
+  <
+    T,
+    Namespaces extends readonly Namespace<any, string, any, any>[],
+    Excluded extends ExcludeByPrefix<Namespaces[number]['name'], T>,
+    Result extends Excluded & ExtractNamespaces<Namespaces>,
+    Mps extends [StoreMutatorIdentifier, unknown][] = [],
+    Mcs extends [StoreMutatorIdentifier, unknown][] = []
+  >(
+    creator: StateCreator<
+      T,
+      [...Mps, ['zustand-namespaces', Namespaces]],
+      Mcs,
+      T
+    >,
+    options: {
+      namespaces: Namespaces;
+    }
+  ): StateCreator<Result, Mps, [['zustand-namespaces', Namespaces], ...Mcs]>;
+  (): <
+    T,
+    Namespaces extends readonly Namespace<any, string, any, any>[],
+    Excluded extends ExcludeByPrefix<Namespaces[number]['name'], T>,
+    Result extends Excluded & ExtractNamespaces<Namespaces>,
+    Mps extends [StoreMutatorIdentifier, unknown][] = [],
+    Mcs extends [StoreMutatorIdentifier, unknown][] = []
+  >(
+    creator: StateCreator<
+      Result,
+      [...Mps, ['zustand-namespaces', Namespaces]],
+      Mcs,
+      Excluded
+    >,
+    options: {
+      namespaces: Namespaces;
+    }
+  ) => StateCreator<T, Mps, [['zustand-namespaces', Namespaces], ...Mcs]>;
+  <
+    T extends ExtractNamespaces<Namespaces>,
+    Namespaces extends readonly Namespace<any, string, any, any>[],
+    Mps extends [StoreMutatorIdentifier, unknown][] = [],
+    Mcs extends [StoreMutatorIdentifier, unknown][] = []
+  >(options: {
+    namespaces: Namespaces;
+  }): StateCreator<T, Mps, [['zustand-namespaces', Namespaces], ...Mcs], T> &
+    Assert<T, ExtractNamespaces<Namespaces>>;
+};
+
+export const namespaced = ((one?: any, two?: any) => {
+  if (!one && !two) {
+    return (creator: any, options: any) => {
+      const { namespaces } = options;
+      console.log('namespaces', namespaces);
+      return (set: any, get: any, api: any) => {
+        const apiWithNamespaces = Object.assign(api, {
+          namespaces: {},
+        });
+        return {
+          ...spreadTransformedNamespaces(
+            namespaces,
+            set,
+            get,
+            apiWithNamespaces
+          ),
+          ...creator(set, get, apiWithNamespaces),
+        };
+      };
+    };
+  } else if (!two) {
+    return (creator: any) => {
+      const { namespaces } = one;
+      return (set: any, get: any, api: any) => {
+        const apiWithNamespaces = Object.assign(api, {
+          namespaces: {},
+        });
+        return {
+          ...spreadTransformedNamespaces(
+            namespaces,
+            set,
+            get,
+            apiWithNamespaces
+          ),
+          ...creator(set, get, apiWithNamespaces),
+        };
+      };
+    };
+  } else {
+    const { namespaces } = two;
+    return (set: any, get: any, api: any) => {
       const apiWithNamespaces = Object.assign(api, {
         namespaces: {},
       });
       return {
         ...spreadTransformedNamespaces(namespaces, set, get, apiWithNamespaces),
-        // @ts-expect-error // eslint-disable-next-line
-        ...creator?.(set, get, apiWithNamespaces),
+        ...one(set, get, apiWithNamespaces),
       };
     };
-  };
-}
+  }
+}) as Namespaced;

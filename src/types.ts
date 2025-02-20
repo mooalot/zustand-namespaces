@@ -62,51 +62,47 @@ type Readonly<T extends object> = {
 
 type PrefixNamespaces<
   K extends string,
-  Namespaces extends readonly [...Namespace[]]
+  Namespaces extends readonly [...Namespace<any, string, any, any>[]]
 > = Namespaces extends [
-  infer First extends Namespace,
-  ...infer Rest extends Namespace[]
+  infer First extends Namespace<any, string, any, any>,
+  ...infer Rest extends Namespace<any, string, any, any>[]
 ]
   ? `${First['name']}_${PrefixNamespaces<K, Rest>}`
   : K;
 
+export type UnNamespacedState<
+  T,
+  Namespaces extends readonly [...Namespace<any, string, any, any>[]]
+> = {
+  [K in keyof T as PrefixNamespaces<K & string, Namespaces>]: T[K];
+};
+
 type UnprefixNamespaces<
   K extends string,
-  Namespaces extends readonly [...Namespace[]]
+  Namespaces extends readonly [...Namespace<any, string, any, any>[]]
 > = Namespaces extends [
-  infer First extends Namespace,
-  ...infer Rest extends Namespace[]
+  infer First extends Namespace<any, string, any, any>,
+  ...infer Rest extends Namespace<any, string, any, any>[]
 ]
   ? K extends `${First['name']}_${infer R}`
     ? UnprefixNamespaces<R, Rest>
     : never
   : K;
 
-export type UnNamespacedState<
+export type NamespacedState<
   T,
-  Namespaces extends readonly [...Namespace[]]
+  Namespaces extends readonly [...Namespace<any, string, any, any>[]]
 > = {
-  [K in keyof T as PrefixNamespaces<K & string, Namespaces>]: T[K];
-};
-
-export type NamespacedState<T, Namespaces extends readonly [...Namespace[]]> = {
   [K in keyof T as UnprefixNamespaces<K & string, Namespaces>]: T[K];
 };
 
 export type UseBoundNamespace<
   S extends Readonly<StoreApi<unknown>>,
-  Namespaces extends readonly [...Namespace[]]
+  Namespaces extends readonly [...Namespace<any, string, any, any>[]]
 > = UseBoundStore<S> & {
   getRawState: () => UnNamespacedState<ExtractState<S>, Namespaces>;
-  namespaces: {
-    [K in keyof Namespaces as Namespaces[K] extends Namespace<any, infer N>
-      ? N
-      : never]: {
-      path: Namespaces;
-    };
-  };
   /**
-   * The path of namespaces to get to root store
+   * The path of namespaces to get to root store. (e.g. ['subNamespace1', 'namespace1'])
    */
   namespacePath: Namespaces;
 };

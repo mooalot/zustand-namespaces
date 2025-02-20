@@ -1,9 +1,14 @@
 import { temporal } from 'zundo';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { ExtractNamespace, ExtractNamespaces } from '../src/types';
 import { createNamespace, getNamespaceHooks, namespaced } from '../src/utils';
 
-const s1 = createNamespace<{ data: string }>()(
+type SubNamespace = {
+  data: string;
+};
+
+const s1 = createNamespace<SubNamespace>()(
   'namespace',
   temporal(
     persist(
@@ -15,16 +20,27 @@ const s1 = createNamespace<{ data: string }>()(
   )
 );
 
-const n1 = createNamespace<{ data: string; namespace_data: string }>()(
+type Namespace1 = ExtractNamespace<typeof s1> & {
+  data: string;
+};
+
+const n1 = createNamespace<Namespace1>()(
   'namespace1',
-  namespaced(s1)(
+  namespaced(
     temporal(() => ({
       data: 'hi',
-    }))
+    })),
+    {
+      namespaces: [s1],
+    }
   )
 );
 
-const n2 = createNamespace<{ data: string }>()(
+type Namespace2 = {
+  data: string;
+};
+
+const n2 = createNamespace<Namespace2>()(
   'namespace2',
   persist(
     () => ({
@@ -34,17 +50,23 @@ const n2 = createNamespace<{ data: string }>()(
   )
 );
 
-const useStore = create(namespaced(n1, n2)(() => ({ hi: 'hi' })));
-const [useNamespace1, useNamespace2] = getNamespaceHooks(useStore, n1, n2);
-const [useSubNamespace] = getNamespaceHooks(useNamespace1, s1);
+type AppState = ExtractNamespaces<[typeof n1, typeof n2]>;
 
-useStore.namespaces.namespace1.temporal.getState();
-useStore.namespaces.namespace2.persist.clearStorage();
-useNamespace1.temporal;
-useNamespace2.persist.clearStorage();
+const useStore = create<AppState>()(namespaced({ namespaces: [n1, n2] }));
+export const [useNamespace1, useNamespace2] = getNamespaceHooks(
+  useStore,
+  n1,
+  n2
+);
+export const [useSubNamespace] = getNamespaceHooks(useNamespace1, s1);
 
-useNamespace1.namespaces.namespace.temporal.getState();
-useNamespace1((state) => state.data);
+// useStore.namespaces.namespace1.temporal.getState();
+// useStore.namespaces.namespace2.persist.clearStorage();
+// useNamespace1.temporal;
+// useNamespace2.persist.clearStorage();
 
-useSubNamespace.persist.clearStorage();
-useSubNamespace((state) => state.data);
+// useNamespace1.namespaces.namespace.temporal.getState();
+// useNamespace1((state) => state.data);
+
+// useSubNamespace.persist.clearStorage();
+// useSubNamespace((state) => state.data);

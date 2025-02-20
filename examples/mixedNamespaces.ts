@@ -9,18 +9,12 @@ type Namespace2 = {
   dataInNamespace2: string;
 };
 
-const namespace1 = createNamespace<Namespace1>()(() => ({
-  name: 'namespace1',
-  creator: () => ({
-    dataInNamespace1: 'data',
-  }),
+const namespace1 = createNamespace<Namespace1>()('namespace1', () => ({
+  dataInNamespace1: 'data',
 }));
 
-const namespace2 = createNamespace<Namespace2>()(() => ({
-  name: 'namespace2',
-  creator: () => ({
-    dataInNamespace2: 'data',
-  }),
+const namespace2 = createNamespace<Namespace2>()('namespace2', () => ({
+  dataInNamespace2: 'data',
 }));
 
 const namespaces = [namespace1, namespace2] as const;
@@ -30,12 +24,14 @@ type NotNamespacedData = {
 };
 
 type AppState = ExtractNamespaces<typeof namespaces> & NotNamespacedData;
-const namespace = namespaced(...namespaces);
 
 const useStore = create<AppState>()(
-  namespace(() => ({
-    foo: 'bar',
-  }))
+  namespaced()(
+    () => ({
+      foo: 'bar',
+    }),
+    { namespaces: namespaces }
+  )
 );
 
 export const [useNamespace1, useNamespace2] = getNamespaceHooks(

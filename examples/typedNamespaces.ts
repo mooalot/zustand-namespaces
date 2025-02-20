@@ -10,32 +10,22 @@ type Namespace2 = {
   dataInNamespace2: string;
 };
 
-const namespace1 = createNamespace<Namespace1>()(() => ({
-  name: 'namespace1',
-  creator: () => ({
-    dataInNamespace1: 'data',
-  }),
-  options: {
-    partialized: (state) => ({
-      dataInNamespace1: state.dataInNamespace1,
-    }),
-  },
+const namespace1 = createNamespace<Namespace1>()('namespace1', () => ({
+  dataInNamespace1: 'data',
 }));
 
-const namespace2 = createNamespace<Namespace2>()(() => ({
-  name: 'namespace2',
-  creator: () => ({
-    dataInNamespace2: 'data',
-  }),
-  options: {},
+const namespace2 = createNamespace<Namespace2>()('namespace2', () => ({
+  dataInNamespace2: 'data',
 }));
 
 const namespaces = [namespace1, namespace2] as const;
 
 type AppState = ExtractNamespaces<typeof namespaces> & { hi: string };
 
-const namespace = namespaced(...namespaces);
-const useStore = create<AppState>()(namespace(() => ({ hi: 'hi' })));
+const useStore = create<AppState>()(
+  // NOTE THE PARENTHESIS HERE (only when explicitly typed)
+  namespaced()(() => ({ hi: 'hi' }), { namespaces })
+);
 
 export const [useNamespace1, useNamespace2] = getNamespaceHooks(
   useStore,

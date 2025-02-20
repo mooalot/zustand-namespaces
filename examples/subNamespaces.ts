@@ -1,9 +1,21 @@
 import { create } from 'zustand';
 import { namespaced, createNamespace, getNamespaceHooks } from '../src/utils';
 
-const namespaceA = createNamespace('namespaceA', () => ({
-  dataInNamespaceA: 'data',
+const subNamespace = createNamespace('subNamespace', () => ({
+  dataInSubNamespace: 'data',
 }));
+
+const namespaceA = createNamespace(
+  'namespaceA',
+  namespaced(
+    () => ({
+      dataInNamespaceA: 'data',
+    }),
+    {
+      namespaces: [subNamespace],
+    }
+  )
+);
 
 const namespaceB = createNamespace('namespaceB', () => ({
   dataInNamespaceB: 'data',
@@ -22,6 +34,8 @@ const useStore = create(
 
 export const [useNamespaceA] = getNamespaceHooks(useStore, namespaceA);
 export const [useNamespaceB] = getNamespaceHooks(useStore, namespaceB);
+// NOTE THAT YOU PASS IN THE PARENT STORE, NOT THE ROOT STORE
+export const [useSubNamespace] = getNamespaceHooks(useNamespaceA, subNamespace);
 
 // useStore((state) => state.namespaceA_dataInNamespaceA);
 // useStore((state) => state.namespaceB_dataInNamespaceB);
@@ -35,3 +49,6 @@ export const [useNamespaceB] = getNamespaceHooks(useStore, namespaceB);
 // useNamespaceB((state) => state.dataInNamespaceB);
 // useNamespaceB.getState;
 // useNamespaceB.setState;
+// useSubNamespace((state) => state.dataInSubNamespace);
+// useSubNamespace.getState;
+// useSubNamespace.setState;
