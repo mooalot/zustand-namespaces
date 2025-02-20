@@ -3,8 +3,20 @@ import {
   StateCreator,
   StoreApi,
   StoreMutatorIdentifier,
+  StoreMutators,
   UseBoundStore,
 } from 'zustand';
+
+declare module 'zustand/vanilla' {
+  interface StoreMutators<S, A> {
+    'zustand-namespaces': WithNamespaces<S, A>;
+  }
+}
+
+export type WithNames<T> = T & {
+  namespaces: any;
+  namespacePath?: Namespace[];
+};
 
 export type ExtractNamespace<T> = ExtractNamespaceType<T>;
 export type ExtractNamespaces<
@@ -77,7 +89,7 @@ export type UnNamespacedState<
   [K in keyof T as PrefixNamespaces<K & string, Namespaces>]: T[K];
 };
 
-type UnprefixNamespaces<
+export type UnprefixNamespaces<
   K extends string,
   Namespaces extends readonly [...Namespace<any, string, any, any>[]]
 > = Namespaces extends [
@@ -105,4 +117,111 @@ export type UseBoundNamespace<
    * The path of namespaces to get to root store. (e.g. ['subNamespace1', 'namespace1'])
    */
   namespacePath: Namespaces;
+};
+
+export type MergeMs<
+  S,
+  Ms extends [StoreMutatorIdentifier, unknown][],
+  // eslint-disable-next-line
+  Current = {}
+> = Ms extends [[infer M, infer A], ...infer Rest]
+  ? Rest extends [StoreMutatorIdentifier, unknown][]
+    ? M extends keyof StoreMutators<S, A>
+      ? MergeMs<
+          S,
+          Rest,
+          Current & Omit<StoreMutators<S, A>[M], keyof StoreApi<any>>
+        >
+      : Current
+    : Current
+  : Current;
+
+export type Write<T, U> = Omit<T, keyof U> & U;
+export type WithNamespaces<S, A> = A extends Namespace<any, string, any, any>[]
+  ? Write<
+      S,
+      {
+        namespaces: {
+          [NS in A[number] as NS extends Namespace<any, infer N, any, any>
+            ? N extends string
+              ? N
+              : never
+            : never]: NS extends Namespace<any, any, any, infer Mcs>
+            ? MergeMs<S, Mcs>
+            : // eslint-disable-next-line
+              {};
+        };
+      }
+    >
+  : S;
+
+export type Assert<T, Expected> = T extends Expected ? T : never;
+export type Namespaced = {
+  <
+    T,
+    Namespaces extends readonly Namespace<any, string, any, any>[],
+    Excluded extends ExcludeByPrefix<Namespaces[number]['name'], T>,
+    Result extends Excluded & ExtractNamespaces<Namespaces>,
+    Mps extends [StoreMutatorIdentifier, unknown][] = [],
+    Mcs extends [StoreMutatorIdentifier, unknown][] = []
+  >(
+    creator: StateCreator<
+      T,
+      [...Mps, ['zustand-namespaces', Namespaces]],
+      Mcs,
+      T
+    >,
+    options: {
+      namespaces: Namespaces;
+    }
+  ): StateCreator<Result, Mps, [['zustand-namespaces', Namespaces], ...Mcs]>;
+  (): <
+    T,
+    Namespaces extends readonly Namespace<any, string, any, any>[],
+    Excluded extends ExcludeByPrefix<Namespaces[number]['name'], T>,
+    Result extends Excluded & ExtractNamespaces<Namespaces>,
+    Mps extends [StoreMutatorIdentifier, unknown][] = [],
+    Mcs extends [StoreMutatorIdentifier, unknown][] = []
+  >(
+    creator: StateCreator<
+      Result,
+      [...Mps, ['zustand-namespaces', Namespaces]],
+      Mcs,
+      Excluded
+    >,
+    options: {
+      namespaces: Namespaces;
+    }
+  ) => StateCreator<T, Mps, [['zustand-namespaces', Namespaces], ...Mcs]>;
+  <
+    T extends ExtractNamespaces<Namespaces>,
+    Namespaces extends readonly Namespace<any, string, any, any>[],
+    Mps extends [StoreMutatorIdentifier, unknown][] = [],
+    Mcs extends [StoreMutatorIdentifier, unknown][] = []
+  >(options: {
+    namespaces: Namespaces;
+  }): StateCreator<T, Mps, [['zustand-namespaces', Namespaces], ...Mcs], T> &
+    Assert<T, ExtractNamespaces<Namespaces>>;
+};
+
+export type CreateNamespace = {
+  // inferred
+  <
+    T,
+    Name extends string,
+    Mps extends [StoreMutatorIdentifier, unknown][] = [],
+    Mcs extends [StoreMutatorIdentifier, unknown][] = []
+  >(
+    name: Name,
+    creator: StateCreator<T, Mps, Mcs>
+  ): Namespace<T, Name, Mps, Mcs>;
+  // explicit
+  <T>(): <
+    Name extends string,
+    Mps extends [StoreMutatorIdentifier, unknown][] = [],
+    Mcs extends [StoreMutatorIdentifier, unknown][] = []
+  >(
+    name: Name,
+    creator: StateCreator<T, Mps, Mcs>
+  ) => Namespace<T, Name, Mps, Mcs>;
 };

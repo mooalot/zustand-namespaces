@@ -17,7 +17,6 @@ import {
   FilterByPrefix,
   Namespace,
   PrefixObject,
-  UnNamespacedState,
   UseBoundNamespace,
 } from '../src/types';
 
@@ -309,26 +308,6 @@ describe('namespaceToState', () => {
     });
 
     expectType<PrefixObject<'user', typeof state>>(namespacedState);
-  });
-});
-
-describe('UnNamespacedState', () => {
-  const namespace: UserNamespace = {
-    name: 'user',
-    creator: () => ({
-      name: 'Alice',
-      age: 25,
-    }),
-  };
-  const data = {
-    name: 'Alice',
-    age: 25,
-  };
-  type Blah = UnNamespacedState<typeof data, [typeof namespace]>;
-
-  expectType<Blah>({
-    user_name: 'Alice',
-    user_age: 25,
   });
 });
 

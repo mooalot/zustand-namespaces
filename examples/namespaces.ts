@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { namespaced, createNamespace, getNamespaceHooks } from '../src/utils';
+import { createNamespace, getNamespaceHooks, namespaced } from '../src/utils';
 
 const namespaceA = createNamespace('namespaceA', () => ({
   dataInNamespaceA: 'data',

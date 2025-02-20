@@ -7,21 +7,19 @@ import {
   UseBoundStore,
 } from 'zustand';
 import {
+  CreateNamespace,
   ExcludeByPrefix,
   ExtractNamespaces,
   FilterByPrefix,
   IncludeByPrefix,
   Namespace,
+  Namespaced,
   NamespacedState,
   PrefixObject,
   UnNamespacedState,
   UseBoundNamespace,
+  WithNames,
 } from './types';
-
-type WithNames<T> = T & {
-  namespaces: any;
-  namespacePath?: Namespace[];
-};
 
 function getNamespacedApi<T extends object, Name extends string>(
   namespace: Namespace<FilterByPrefix<Name, T>, Name>,
@@ -279,28 +277,6 @@ export function fromNamespace<
   return current;
 }
 
-type CreateNamespace = {
-  // inferred
-  <
-    T,
-    Name extends string,
-    Mps extends [StoreMutatorIdentifier, unknown][] = [],
-    Mcs extends [StoreMutatorIdentifier, unknown][] = []
-  >(
-    name: Name,
-    creator: StateCreator<T, Mps, Mcs>
-  ): Namespace<T, Name, Mps, Mcs>;
-  // explicit
-  <T>(): <
-    Name extends string,
-    Mps extends [StoreMutatorIdentifier, unknown][] = [],
-    Mcs extends [StoreMutatorIdentifier, unknown][] = []
-  >(
-    name: Name,
-    creator: StateCreator<T, Mps, Mcs>
-  ) => Namespace<T, Name, Mps, Mcs>;
-};
-
 export const createNamespace = ((one?: any, two?: any) => {
   if (one && two) {
     return {
@@ -314,96 +290,6 @@ export const createNamespace = ((one?: any, two?: any) => {
     });
   }
 }) as CreateNamespace;
-
-declare module 'zustand/vanilla' {
-  // eslint-disable-next-line
-  interface StoreMutators<S, A> {
-    'zustand-namespaces': WithNamespaces<S, A>;
-  }
-}
-
-type MergeMs<
-  S,
-  Ms extends [StoreMutatorIdentifier, unknown][],
-  Current = {}
-> = Ms extends [[infer M, infer A], ...infer Rest]
-  ? Rest extends [StoreMutatorIdentifier, unknown][]
-    ? M extends keyof StoreMutators<S, A>
-      ? MergeMs<
-          S,
-          Rest,
-          Current & Omit<StoreMutators<S, A>[M], keyof StoreApi<any>>
-        >
-      : Current
-    : Current
-  : Current;
-
-type Write<T, U> = Omit<T, keyof U> & U;
-type WithNamespaces<S, A> = A extends Namespace<any, string, any, any>[]
-  ? Write<
-      S,
-      {
-        namespaces: {
-          [NS in A[number] as NS extends Namespace<any, infer N, any, any>
-            ? N extends string
-              ? N
-              : never
-            : never]: NS extends Namespace<any, any, any, infer Mcs>
-            ? MergeMs<S, Mcs>
-            : {};
-        };
-      }
-    >
-  : S;
-
-type Assert<T, Expected> = T extends Expected ? T : never;
-type Namespaced = {
-  <
-    T,
-    Namespaces extends readonly Namespace<any, string, any, any>[],
-    Excluded extends ExcludeByPrefix<Namespaces[number]['name'], T>,
-    Result extends Excluded & ExtractNamespaces<Namespaces>,
-    Mps extends [StoreMutatorIdentifier, unknown][] = [],
-    Mcs extends [StoreMutatorIdentifier, unknown][] = []
-  >(
-    creator: StateCreator<
-      T,
-      [...Mps, ['zustand-namespaces', Namespaces]],
-      Mcs,
-      T
-    >,
-    options: {
-      namespaces: Namespaces;
-    }
-  ): StateCreator<Result, Mps, [['zustand-namespaces', Namespaces], ...Mcs]>;
-  (): <
-    T,
-    Namespaces extends readonly Namespace<any, string, any, any>[],
-    Excluded extends ExcludeByPrefix<Namespaces[number]['name'], T>,
-    Result extends Excluded & ExtractNamespaces<Namespaces>,
-    Mps extends [StoreMutatorIdentifier, unknown][] = [],
-    Mcs extends [StoreMutatorIdentifier, unknown][] = []
-  >(
-    creator: StateCreator<
-      Result,
-      [...Mps, ['zustand-namespaces', Namespaces]],
-      Mcs,
-      Excluded
-    >,
-    options: {
-      namespaces: Namespaces;
-    }
-  ) => StateCreator<T, Mps, [['zustand-namespaces', Namespaces], ...Mcs]>;
-  <
-    T extends ExtractNamespaces<Namespaces>,
-    Namespaces extends readonly Namespace<any, string, any, any>[],
-    Mps extends [StoreMutatorIdentifier, unknown][] = [],
-    Mcs extends [StoreMutatorIdentifier, unknown][] = []
-  >(options: {
-    namespaces: Namespaces;
-  }): StateCreator<T, Mps, [['zustand-namespaces', Namespaces], ...Mcs], T> &
-    Assert<T, ExtractNamespaces<Namespaces>>;
-};
 
 export const namespaced = ((one?: any, two?: any) => {
   if (!one && !two) {
