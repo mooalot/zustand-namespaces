@@ -6,7 +6,6 @@ import {
   StoreMutators,
   UseBoundStore,
 } from 'zustand';
-import { shallow } from 'zustand/shallow';
 import {
   ExcludeByPrefix,
   ExtractNamespaces,
@@ -62,15 +61,6 @@ function getNamespacedApi<T extends object, Name extends string>(
     },
     subscribe: (listener) => {
       return api.subscribe((newState, oldState) => {
-        const newUnprefixedState = getUnprefixedObject(
-          namespace.name,
-          newState
-        );
-        const oldUnprefixedState = getUnprefixedObject(
-          namespace.name,
-          oldState
-        );
-        if (shallow(newUnprefixedState, oldUnprefixedState)) return;
         listener(
           getUnprefixedObject(namespace.name, newState),
           getUnprefixedObject(namespace.name, oldState)
@@ -142,13 +132,7 @@ export function getUnprefixedObject<T extends string, Data extends object>(
   }, {} as FilterByPrefix<T, Data>);
 }
 
-/**
- * Method used to spread namespace data into a parent state.
- * @param namespaces The namespaces
- * @param callback A callback that returns the namespace data
- * @returns The combined namespace data
- */
-export function spreadNamespaces<Namespaces extends readonly Namespace[], Data>(
+function spreadNamespaces<Namespaces extends readonly Namespace[], Data>(
   namespaces: Namespaces,
   callback: (namespace: Namespaces[number]) => Data
 ) {

@@ -1,4 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { create } from 'zustand';
+import { Namespace } from '../src/types';
 import {
   createNamespace,
   fromNamespace,
@@ -6,11 +8,8 @@ import {
   getPrefixedObject,
   getUnprefixedObject,
   namespaced,
-  spreadNamespaces,
   toNamespace,
 } from '../src/utils';
-import { ExtractNamespaces, Namespace } from '../src/types';
-import { create } from 'zustand';
 
 describe('Utility Functions', () => {
   describe('getPrefixedObject', () => {
@@ -48,25 +47,6 @@ describe('Utility Functions', () => {
 
       expect(result).toEqual({
         key1: 'value1',
-      });
-    });
-  });
-
-  describe('spreadNamespacesWithCallback', () => {
-    it('should combine namespace results using a callback', () => {
-      const namespaces: Namespace[] = [
-        { name: 'namespace1', creator: () => {} },
-        { name: 'namespace2', creator: () => {} },
-      ];
-      const callback = (namespace: Namespace) => ({
-        [`${namespace.name}_foo`]: 'bar',
-      });
-
-      const result = spreadNamespaces(namespaces, callback);
-
-      expect(result).toEqual({
-        namespace1_foo: 'bar',
-        namespace2_foo: 'bar',
       });
     });
   });
