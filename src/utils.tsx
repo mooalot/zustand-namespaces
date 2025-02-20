@@ -2,6 +2,7 @@ import {
   StateCreator,
   StoreApi,
   StoreMutatorIdentifier,
+  StoreMutators,
   UseBoundStore,
 } from 'zustand';
 import { shallow } from 'zustand/shallow';
@@ -17,11 +18,17 @@ import {
   UseBoundNamespace,
 } from './types';
 
+const nonos = ['getInitialState', 'setState', 'getState', 'subscribe'];
+
+type WithNames<T> = T & {
+  namespaces: Record<string, any>;
+};
+
 function getNamespacedApi<T extends object, Name extends string>(
   namespace: Namespace<FilterByPrefix<Name, T>, Name>,
-  api: StoreApi<T>
-): StoreApi<FilterByPrefix<Name, T>> {
-  const namespacedApi: StoreApi<FilterByPrefix<Name, T>> = {
+  api: WithNames<StoreApi<T>>
+): WithNames<StoreApi<FilterByPrefix<Name, T>>> {
+  const namespacedApi: WithNames<StoreApi<FilterByPrefix<Name, T>>> = {
     getInitialState: () => {
       return getUnprefixedObject(namespace.name, api.getInitialState());
     },
@@ -29,6 +36,7 @@ function getNamespacedApi<T extends object, Name extends string>(
       return getUnprefixedObject(namespace.name, api.getState());
     },
     setState: (state, replace) => {
+      console.log('setting state', state);
       api.setState((currentState) => {
         const unprefixedState = getUnprefixedObject(
           namespace.name,
@@ -70,9 +78,24 @@ function getNamespacedApi<T extends object, Name extends string>(
         );
       });
     },
+    namespaces: api.namespaces,
   };
 
-  return namespacedApi;
+  return new Proxy(namespacedApi, {
+    set: (target, prop, value) => {
+      Object.assign(api, {
+        namespaces: {
+          ...api.namespaces,
+          [namespace.name]: {
+            ...api.namespaces[namespace.name],
+            [String(prop)]: value,
+          },
+        },
+      });
+
+      return Reflect.set(target, prop, value);
+    },
+  });
 }
 
 /**
@@ -82,7 +105,7 @@ function getNamespacedApi<T extends object, Name extends string>(
  */
 export function getNamespaceHooks<
   T extends object,
-  NewNamespaces extends readonly Namespace[],
+  NewNamespaces extends readonly Namespace<any, string, any, any>[],
   CurrentNamespaces extends readonly Namespace[] = []
 >(
   store:
@@ -109,7 +132,10 @@ export function transformStateCreatorArgs<
 ): Parameters<StateCreator<FilterByPrefix<N, State>>> {
   const [, , originalApi] = args;
 
-  const newApi = getNamespacedApi(namespace, originalApi);
+  const newApi = getNamespacedApi(
+    namespace,
+    originalApi as WithNames<StoreApi<State>>
+  );
 
   return [newApi.setState, newApi.getState, newApi];
 }
@@ -165,8 +191,18 @@ function transformCallback<State extends object>(
   return function <P extends string>(
     namespace: Namespace<FilterByPrefix<P, State>, P>
   ) {
-    const newArgs = transformStateCreatorArgs(namespace, ...args);
-    return getPrefixedObject(namespace.name, namespace.creator(...newArgs));
+    const originalApi = args[2] as WithNames<StoreApi<State>>;
+    const [set, get, api] = transformStateCreatorArgs(namespace, ...args);
+    Object.assign(originalApi, {
+      namespaces: {
+        ...originalApi.namespaces,
+        [namespace.name]: {
+          ...originalApi.namespaces[namespace.name],
+          ...api,
+        },
+      },
+    });
+    return getPrefixedObject(namespace.name, namespace.creator(set, get, api));
   };
 }
 
@@ -194,19 +230,24 @@ function getOneNamespaceHook<
     StoreApi<FilterByPrefix<Name, Store>>,
     [Namespace<FilterByPrefix<Name, Store>, Name>, ...Namespaces]
   >;
-  const namespaceApi = getNamespacedApi(namespace, useStore);
   const hook = ((selector) => {
     return useStore((state) => {
       return selector(toNamespace(state, namespace) as any);
     });
   }) as BoundStore;
 
-  let currentNamespaces: Array<Namespace> = (useStore as any).namespaces ?? [];
+  const store = useStore as WithNames<StoreApi<Store>>;
+  const originalApi = store.namespaces[namespace.name];
+  console.log('originalApi', originalApi);
+  if (!originalApi) throw new Error('Namespace not found');
+
+  let currentNamespaces: Array<Namespace> =
+    (useStore as any).namespaces[namespace.name].path ?? [];
   currentNamespaces = [...currentNamespaces, namespace];
 
-  return Object.assign(hook, namespaceApi, {
+  return Object.assign(hook, originalApi, {
     getRawState: () => {
-      let currentState: any = namespaceApi.getState();
+      let currentState: any = originalApi.getState();
       for (let i = currentNamespaces.length - 1; i >= 0; i--) {
         currentState = getPrefixedObject(
           currentNamespaces[i].name,
@@ -215,7 +256,13 @@ function getOneNamespaceHook<
       }
       return currentState;
     },
-    namespaces: currentNamespaces,
+    // namespaces: {
+    //   ...namespaceApi.namespaces,
+    //   [namespace.name]: {
+    //     ...namespaceApi.namespaces[namespace.name],
+    //     path: currentNamespaces,
+    //   },
+    // },
   });
 }
 
@@ -267,87 +314,66 @@ export function fromNamespace<State, Namespaces extends readonly Namespace[]>(
   return current;
 }
 
-type CreateNamespace = {
-  <Name extends string, Data, Options>(
-    callback: () => Namespace<Data, Name, Options>
-  ): Namespace<Data, Name, Options>;
-  <T, Options = unknown>(): <Name extends string>(
-    callback: () => Namespace<T, Name, Options>
-  ) => Namespace<T, Name, Options>;
-};
-
-/**
- * Helper method for creating a namespace.
- * @param callback A callback that returns a namespace
- * @returns A function that returns a namespace
- */
-export const createNamespace: CreateNamespace = ((callback?: any) => {
-  if (callback) {
-    // The first overload implementation
-    return callback();
-  } else {
-    // The second overload implementation
-    return <Prefix extends string, Data, Options>(
-      callback: () => Namespace<Data, Prefix, Options>
-    ) => {
-      return callback();
-    };
-  }
-}) as CreateNamespace;
-
-/**
- * Helper method for partializing a namespace. This method is often used in 3rd party libraries to create a partialized version of a store.
- * @param state The state of the store
- * @param getPartializeFn A function that returns a partialized version of the namespace
- * @returns A function that returns a partialized version of the namespace
- */
-export function partializeNamespace<
-  P extends string,
-  State extends object,
-  Options
+export function createNamespace<T>(): <
+  Name extends string,
+  Mps extends [StoreMutatorIdentifier, unknown][] = [],
+  Mcs extends [StoreMutatorIdentifier, unknown][] = []
 >(
-  state: State,
-  getPartializeFn: (
-    namespace: Namespace<FilterByPrefix<P, State>, P, Options>
-  ) =>
-    | ((state: FilterByPrefix<P, State>) => Partial<FilterByPrefix<P, State>>)
-    | undefined
-) {
-  return (namespace: Namespace<FilterByPrefix<P, State>, P, Options>) => {
-    const namespaceData: any = toNamespace(state, namespace);
-    const partializedData = getPartializeFn(namespace)?.(namespaceData);
-    return fromNamespace(partializedData ?? {}, namespace);
+  name: Name,
+  creator: StateCreator<T, Mps, Mcs>
+) => Namespace<T, Name, Mps, Mcs> {
+  return (name, creator) => {
+    return {
+      name,
+      creator,
+    };
   };
-}
-
-/**
- * Helper method for partializing a namespace. This method is often used in 3rd party libraries to create a partialized version of a store.
- * @param state The state of the store
- * @param namespaces The namespaces of the store
- * @param getPartializeFn A function that returns a partialized version of the namespace
- * @returns A function that returns a partialized version of the namespace
- */
-export function partializeNamespaces<
-  State extends object,
-  Namespaces extends readonly Namespace[],
-  Fn extends <D extends Namespaces[number]>(
-    namespace: D
-  ) => ((state: any) => any) | undefined
->(state: State, namespaces: Namespaces, getPartializeFn: Fn) {
-  return spreadNamespaces(
-    namespaces,
-    partializeNamespace(state, getPartializeFn)
-  );
 }
 
 declare module 'zustand/vanilla' {
   // eslint-disable-next-line
   interface StoreMutators<S, A> {
-    'zustand-namespaces': S;
+    'zustand-namespaces': WithNamespaces<S, A>;
   }
 }
 
-export function namespaced<Namespaces extends readonly Namespace[]>(
+type MergeMs<
+  S,
+  Ms extends [StoreMutatorIdentifier, unknown][],
+  Current = {}
+> = Ms extends [[infer M, infer A], ...infer Rest]
+  ? Rest extends [StoreMutatorIdentifier, unknown][]
+    ? M extends keyof StoreMutators<S, A>
+      ? MergeMs<
+          S,
+          Rest,
+          Current & Omit<StoreMutators<S, A>[M], keyof StoreApi<any>>
+        >
+      : Current
+    : Current
+  : Current;
+
+type Write<T, U> = Omit<T, keyof U> & U;
+type WithNamespaces<S, A> = A extends Namespace<any, string, any, any>[]
+  ? Write<
+      S,
+      {
+        namespaces: {
+          [NS in A[number] as NS extends Namespace<any, infer N, any, any>
+            ? N extends string
+              ? N
+              : never
+            : never]: NS extends Namespace<any, any, any, infer Mcs>
+            ? MergeMs<S, Mcs>
+            : {};
+        };
+      }
+    >
+  : S;
+
+export function namespaced<
+  Namespaces extends readonly Namespace<any, string, any, any>[]
+>(
   ...namespaces: Namespaces
 ): <
   T,
@@ -365,16 +391,19 @@ export function namespaced<Namespaces extends readonly Namespace[]>(
 ) => StateCreator<
   Result,
   Mps,
-  [['zustand-namespaces', unknown], ...Mcs],
+  [['zustand-namespaces', Namespaces], ...Mcs],
   Result
 > {
   // @ts-expect-error  // eslint-disable-next-line
   return (creator) => {
-    return (...args) => {
+    return (set, get, api) => {
+      const apiWithNamespaces = Object.assign(api, {
+        namespaces: {},
+      });
       return {
-        ...spreadTransformedNamespaces(namespaces, ...args),
+        ...spreadTransformedNamespaces(namespaces, set, get, apiWithNamespaces),
         // @ts-expect-error // eslint-disable-next-line
-        ...creator?.(...args),
+        ...creator?.(set, get, apiWithNamespaces),
       };
     };
   };

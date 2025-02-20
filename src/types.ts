@@ -1,18 +1,23 @@
-import { ExtractState, StateCreator, StoreApi } from 'zustand';
+import {
+  ExtractState,
+  StateCreator,
+  StoreApi,
+  StoreMutatorIdentifier,
+} from 'zustand';
 
 export type ExtractNamespace<T> = ExtractNamespaceType<T>;
-export type ExtractNamespaces<T extends readonly Namespace[]> =
-  UnionToIntersection<ExtractNamespaceType<T[number]>>;
+export type ExtractNamespaces<
+  T extends readonly Namespace<any, string, any, any>[]
+> = UnionToIntersection<ExtractNamespaceType<T[number]>>;
 
 export type Namespace<
   T = any,
   Name extends string = string,
-  Options = unknown
+  Mps extends [StoreMutatorIdentifier, unknown][] = [],
+  Mcs extends [StoreMutatorIdentifier, unknown][] = []
 > = {
   name: Name;
-  // child creator does not care about Mutators
-  creator: StateCreator<T, any, any>;
-  options?: Options;
+  creator: StateCreator<T, Mps, Mcs>;
 };
 
 export type PrefixObject<Name extends string, U> = {
@@ -40,7 +45,7 @@ export type ExcludeByPrefix<Prefix extends string, T> = {
   [K in keyof T as K extends `${Prefix}_${string}` ? never : K]: T[K];
 };
 
-type ExtractNamespaceType<T> = T extends Namespace<infer N, infer U>
+type ExtractNamespaceType<T> = T extends Namespace<infer N, infer U, any, any>
   ? PrefixObject<U, N>
   : never;
 
@@ -94,5 +99,11 @@ export type UseBoundNamespace<
   <U>(selector: (state: ExtractState<S>) => U): U;
 } & S & {
     getRawState: () => UnNamespacedState<ExtractState<S>, Namespaces>;
-    namespaces: Namespaces;
+    namespaces: {
+      [K in keyof Namespaces as Namespaces[K] extends Namespace<any, infer N>
+        ? N
+        : never]: {
+        path: Namespaces;
+      };
+    };
   };
