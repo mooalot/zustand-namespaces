@@ -173,37 +173,39 @@ function spreadTransformedNamespaces<
   return spreadNamespaces(namespaces, transformCallback(...args)) as any;
 }
 
-/**
- * Method used to get hooks for multiple namespaces.
- * @param store The store or namespace to get the hooks from (parent store)
- * @param namespaces The namespaces
- */
-export function getNamespaceHooks<
+export function getNamespaceFactory<
   S extends StoreApi<any>,
-  NewNamespaces extends readonly Namespace<any, string, any, any>[],
   CurrentNamespaces extends readonly Namespace<any, string, any, any>[] = []
 >(
-  store: UseBoundStore<S> | UseBoundNamespace<S, CurrentNamespaces>,
-  ...namespaces: NewNamespaces
-): {
-  [K in keyof NewNamespaces]: UseBoundNamespace<
-    S extends { namespaces: any }
-      ? S extends StoreApi<any>
-        ? NewNamespaces[K]['name'] extends keyof S['namespaces']
-          ? S['namespaces'][NewNamespaces[K]['name']] &
-              StoreApi<
-                FilterByPrefix<NewNamespaces[K]['name'], ExtractState<S>>
-              >
-          : StoreApi<{ failed3: 'failed' }>
-        : StoreApi<{ failed2: 'failed' }>
-      : StoreApi<{ failed1: 'failed' }>,
-    [...CurrentNamespaces, NewNamespaces[K]] // Track the current namespace chain
-  >;
-} {
-  return namespaces.map((namespace) =>
-    getOneNamespaceHook(store, namespace)
-  ) as any;
+  store: UseBoundStore<S> | UseBoundNamespace<S, CurrentNamespaces>
+): <NewNamespace extends Namespace<any, string, any, any>>(
+  namespace: NewNamespace
+) => UseBoundNamespace<
+  S extends { namespaces: any }
+    ? S extends StoreApi<any>
+      ? NewNamespace['name'] extends keyof S['namespaces']
+        ? S['namespaces'][NewNamespace['name']] &
+            StoreApi<FilterByPrefix<NewNamespace['name'], ExtractState<S>>>
+        : never
+      : never
+    : never,
+  [...CurrentNamespaces, NewNamespace] // Track the current namespace chain
+> {
+  return (namespace) => getOneNamespaceHook(store, namespace) as any;
 }
+
+type FindMatchingNamespace<
+  S extends { namespaces?: Record<string, any> },
+  Name extends string
+> = Name extends keyof S
+  ? S[Name]
+  : S extends { namespaces: infer N }
+  ? N extends Record<string, any>
+    ? {
+        [K in keyof N]: FindMatchingNamespace<N[K], Name>;
+      }[keyof N]
+    : never
+  : never;
 
 function getOneNamespaceHook<
   Name extends string,

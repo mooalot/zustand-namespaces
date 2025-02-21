@@ -10,7 +10,7 @@ import {
   createNamespace,
   toNamespace,
   fromNamespace,
-  getNamespaceHooks,
+  getNamespaceFactory,
 } from '../src/utils';
 import { StoreApi, StateCreator, create, UseBoundStore } from 'zustand';
 import {
@@ -190,7 +190,8 @@ describe('namespaceHook', () => {
       )
     );
 
-    const [hook] = getNamespaceHooks(useStore, userNamespace);
+    const factory = getNamespaceFactory(useStore);
+    const hook = factory(userNamespace);
 
     expect(hook).toBeDefined();
     expectType<UseBoundNamespace<StoreApi<FilterByPrefix<'user', State>>, any>>(
@@ -225,11 +226,9 @@ describe('namespaceHooks', () => {
       )
     );
 
-    const [useUser, useAdmin] = getNamespaceHooks(
-      useStore,
-      userNamespace,
-      adminNamespace
-    );
+    const factory = getNamespaceFactory(useStore);
+    const useUser = factory(userNamespace);
+    const useAdmin = factory(adminNamespace);
 
     expect(useUser).toBeDefined();
     expect(useAdmin).toBeDefined();
@@ -340,11 +339,10 @@ describe('createNamespace', () => {
       )
     );
 
-    const [useNamespaceStore] = getNamespaceHooks(useStore, namespace);
-    const [useSubNamespaceStore] = getNamespaceHooks(
-      useNamespaceStore,
-      subNamespace
-    );
+    const factory = getNamespaceFactory(useStore);
+    const useNamespaceStore = factory(namespace);
+    const subFactory = getNamespaceFactory(useNamespaceStore);
+    const useSubNamespaceStore = subFactory(subNamespace);
 
     expectType<string>(useNamespaceStore.getRawState().namespace_key);
     expectType<string>(

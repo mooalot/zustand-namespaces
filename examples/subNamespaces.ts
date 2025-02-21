@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { namespaced, createNamespace, getNamespaceHooks } from '../src/utils';
+import { namespaced, createNamespace, getNamespaceFactory } from '../src/utils';
 
 const subNamespace = createNamespace('subNamespace', () => ({
   dataInSubNamespace: 'data',
@@ -32,10 +32,12 @@ const useStore = create(
   )
 );
 
-export const [useNamespaceA] = getNamespaceHooks(useStore, namespaceA);
-export const [useNamespaceB] = getNamespaceHooks(useStore, namespaceB);
-// NOTE THAT YOU PASS IN THE PARENT STORE, NOT THE ROOT STORE
-export const [useSubNamespace] = getNamespaceHooks(useNamespaceA, subNamespace);
+const factory = getNamespaceFactory(useStore);
+export const useNamespaceA = factory(namespaceA);
+export const useNamespaceB = factory(namespaceB);
+// NOTE THAT A NEW FACTORY IS CREATED FOR THE SUBNAMESPACE
+const subFactory = getNamespaceFactory(useNamespaceA);
+export const useSubNamespace = subFactory(subNamespace);
 
 // useStore((state) => state.namespaceA_dataInNamespaceA);
 // useStore((state) => state.namespaceB_dataInNamespaceB);

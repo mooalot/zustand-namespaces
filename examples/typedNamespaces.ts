@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { createNamespace, getNamespaceHooks, namespaced } from '../src/utils';
+import { createNamespace, getNamespaceFactory, namespaced } from '../src/utils';
 import { ExtractNamespaces } from '../src/types';
 
 type Namespace1 = {
@@ -18,7 +18,7 @@ const namespace2 = createNamespace<Namespace2>()('namespace2', () => ({
   dataInNamespace2: 'data',
 }));
 
-const namespaces = [namespace1, namespace2] as const;
+const namespaces = [namespace1, namespace2];
 
 type AppState = ExtractNamespaces<typeof namespaces> & { hi: string };
 
@@ -27,10 +27,9 @@ const useStore = create<AppState>()(
   namespaced()(() => ({ hi: 'hi' }), { namespaces })
 );
 
-export const [useNamespace1, useNamespace2] = getNamespaceHooks(
-  useStore,
-  ...namespaces
-);
+const factory = getNamespaceFactory(useStore);
+export const useNamespace1 = factory(namespace1);
+export const useNamespace2 = factory(namespace2);
 
 // useStore((state) => state.namespace1_dataInNamespace1);
 // useStore((state) => state.namespace2_dataInNamespace2);

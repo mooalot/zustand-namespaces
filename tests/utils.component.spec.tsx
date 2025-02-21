@@ -3,7 +3,7 @@ import { act, cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, expect, test } from 'vitest';
 import { create } from 'zustand';
-import { createNamespace, getNamespaceHooks, namespaced } from '../src/utils';
+import { createNamespace, getNamespaceFactory, namespaced } from '../src/utils';
 import { ExtractNamespace, ExtractNamespaces } from '../src/types';
 
 type Namespace1 = {
@@ -66,12 +66,11 @@ type AppState = ExtractNamespaces<typeof namespaces>;
 // Create zustand store
 const useStore = create<AppState>()(namespaced()(() => ({}), { namespaces }));
 
-const [useNamespace1, useNamespace2] = getNamespaceHooks(
-  useStore,
-  namespace1,
-  namespace2
-);
-const [useSubNamespace1] = getNamespaceHooks(useNamespace1, subNamespace);
+const factory = getNamespaceFactory(useStore);
+const useNamespace1 = factory(namespace1);
+const useNamespace2 = factory(namespace2);
+const subFactory = getNamespaceFactory(useNamespace1);
+const useSubNamespace1 = subFactory(subNamespace);
 
 const SubNamespace1Component = () => {
   const data = useSubNamespace1((state) => state.dataInSubNamespace1);

@@ -3,7 +3,7 @@ export {
   createNamespace,
   toNamespace,
   fromNamespace,
-  getNamespaceHooks,
+  getNamespaceFactory,
 } from './utils';
 export type {
   Namespace,

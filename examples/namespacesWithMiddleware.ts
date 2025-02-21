@@ -2,7 +2,7 @@ import { temporal } from 'zundo';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { ExtractNamespace, ExtractNamespaces } from '../src/types';
-import { createNamespace, getNamespaceHooks, namespaced } from '../src/utils';
+import { createNamespace, getNamespaceFactory, namespaced } from '../src/utils';
 
 type SubNamespace = {
   data: string;
@@ -53,12 +53,12 @@ const n2 = createNamespace<Namespace2>()(
 type AppState = ExtractNamespaces<[typeof n1, typeof n2]>;
 
 const useStore = create<AppState>()(namespaced({ namespaces: [n1, n2] }));
-export const [useNamespace1, useNamespace2] = getNamespaceHooks(
-  useStore,
-  n1,
-  n2
-);
-export const [useSubNamespace] = getNamespaceHooks(useNamespace1, s1);
+
+const factory = getNamespaceFactory(useStore);
+export const useNamespace1 = factory(n1);
+export const useNamespace2 = factory(n2);
+const subFactory = getNamespaceFactory(useNamespace1);
+export const useSubNamespace = subFactory(s1);
 
 // useStore.namespaces.namespace1.temporal.getState();
 // useStore.namespaces.namespace2.persist.clearStorage();
