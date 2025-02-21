@@ -313,7 +313,6 @@ function getRootApi<Store extends object>(
             newState,
             ...(namespaceApi?.namespacePath ?? [])
           );
-          console.log('namespaceState', namespaceState);
 
           namespaceApi.setState(namespaceState, replace as any);
           const originalState = fromNamespace(
