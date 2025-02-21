@@ -6,13 +6,15 @@ export default defineConfig({
     dts({
       rollupTypes: true,
       tsconfigPath: './tsconfig.json',
+      insertTypesEntry: true, // Adds types field to package.json
+      copyDtsFiles: true, // Copies .d.ts files that aren't processed
     }),
   ], // Add any Vite plugins here
   build: {
     outDir: 'dist', // Output directory for build files
     lib: {
       entry: 'src/index.ts', // Entry point for your library
-      name: 'ZustandSlicer', // Global variable name if your library is used in a non-ESM environment
+      name: 'Zustand Namespaces', // Global variable name if your library is used in a non-ESM environment
       fileName: (format) => `index.${format}.js`, // Output file naming pattern
     },
     rollupOptions: {
