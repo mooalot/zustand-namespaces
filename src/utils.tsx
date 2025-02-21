@@ -66,7 +66,7 @@ function getNamespacedApi<T extends object, Name extends string>(
       });
     },
     namespaces: api.namespaces,
-    namespacePath: [namespace, ...(api.namespacePath ?? [])],
+    namespacePath: [...(api.namespacePath ?? []), namespace],
   };
 
   return new Proxy(namespacedApi, {
@@ -230,7 +230,6 @@ function getOneNamespaceHook<
   }) as BoundStore;
 
   const store = useStore as unknown as WithNames<StoreApi<Store>>;
-  console.log(store);
   const originalApi: WithNames<StoreApi<Store>> =
     store.namespaces[namespace.name];
 
@@ -265,7 +264,7 @@ export function toNamespace<
 /**
  * Helper method for going to a state from a namespace.
  *  * @param state The state of the store
- * @param namespaces The namespace(s) to come from. If multiple namespaces are provided, the last namespace will be the one returned.
+ * @param namespaces The namespace(s) to come from.
  * @returns The namespace state
  */
 export function fromNamespace<
@@ -276,7 +275,7 @@ export function fromNamespace<
   ...namespaces: Namespaces
 ): UnNamespacedState<State, Namespaces> {
   let current: any = state;
-  for (let i = 0; i < namespaces.length; i++) {
+  for (let i = namespaces.length - 1; i >= 0; i--) {
     current = getPrefixedObject(namespaces[i].name, current);
   }
   return current;
@@ -296,22 +295,66 @@ export const createNamespace = ((one?: any, two?: any) => {
   }
 }) as CreateNamespace;
 
+function getRootApi<Store extends object>(
+  api: WithNames<StoreApi<Store>>
+): WithNames<StoreApi<Store>> {
+  const setState: StoreApi<Store>['setState'] = (state, replace) => {
+    api.setState((currentState) => {
+      // calls set stat on all necessary namespaces and again on the root store (not optimal, it works with middleware
+      const newState =
+        typeof state === 'function' ? state(currentState) : state;
+      function callSetOnNamespaces(
+        newState: any,
+        namespaces: Record<string, WithNames<StoreApi<any>>>
+      ) {
+        for (const namespace in namespaces) {
+          const namespaceApi = namespaces[namespace];
+          const namespaceState = toNamespace(
+            newState,
+            ...(namespaceApi?.namespacePath ?? [])
+          );
+          console.log('namespaceState', namespaceState);
+
+          namespaceApi.setState(namespaceState, replace as any);
+          const originalState = fromNamespace(
+            namespaceState,
+            ...(namespaceApi.namespacePath ?? [])
+          );
+          console.log('originalState', originalState);
+          for (const key in originalState) {
+            delete newState[key];
+          }
+        }
+      }
+
+      callSetOnNamespaces(newState, api.namespaces);
+      return newState;
+    });
+  };
+
+  return Object.assign(api, {
+    setState,
+  });
+}
+
 export const namespaced = ((one?: any, two?: any) => {
   if (!two) {
-    console.log('one arguement');
     const { namespaces } = one;
     return (
       set: StoreApi<any>['setState'],
       get: StoreApi<any>['getState'],
       api: StoreApi<any>
     ) => {
-      console.log('api', api);
       const apiWithNamespaces = Object.assign(api, {
         namespaces: {},
       });
-      console.log('api', apiWithNamespaces);
       return {
-        ...spreadTransformedNamespaces(namespaces, set, get, apiWithNamespaces),
+        ...spreadTransformedNamespaces(
+          namespaces,
+          set,
+          get,
+          getRootApi(apiWithNamespaces)
+        ),
       };
     };
   } else {
@@ -323,10 +366,13 @@ export const namespaced = ((one?: any, two?: any) => {
       const apiWithNamespaces = Object.assign(api, {
         namespaces: {},
       });
+      const rootApi = getRootApi(apiWithNamespaces);
       return {
-        ...callback(
-          spreadTransformedNamespaces(namespaces, set, get, apiWithNamespaces)
-        )(set, get, apiWithNamespaces),
+        ...callback(spreadTransformedNamespaces(namespaces, set, get, rootApi))(
+          set,
+          get,
+          rootApi
+        ),
       };
     };
   }

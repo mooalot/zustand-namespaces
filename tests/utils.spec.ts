@@ -139,7 +139,7 @@ describe('Utility Functions', () => {
     };
 
     const result = toNamespace(state, namespace, subNamespace);
-    const result2 = fromNamespace(result, subNamespace, namespace);
+    const result2 = fromNamespace(result, namespace, subNamespace);
 
     expect(result).toEqual({
       key: 'value',

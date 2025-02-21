@@ -128,7 +128,6 @@ describe('Zustand Namespace Stores', () => {
 // Tests
 describe('Zustand Namespaces with Components', () => {
   const resetStore = () => {
-    console.log('useStore', useStore);
     useStore.setState({
       namespace1_dataInNamespace1: 'Initial Namespace1 Data',
       namespace2_dataInNamespace2: 'Initial Namespace2 Data',
