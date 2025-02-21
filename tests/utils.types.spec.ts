@@ -10,7 +10,7 @@ import {
   createNamespace,
   toNamespace,
   fromNamespace,
-  getNamespaceFactory,
+  getNamespaceHooks,
 } from '../src/utils';
 import { StoreApi, StateCreator, create, UseBoundStore } from 'zustand';
 import {
@@ -190,8 +190,7 @@ describe('namespaceHook', () => {
       )
     );
 
-    const factory = getNamespaceFactory(useStore);
-    const hook = factory(userNamespace);
+    const { user: hook } = getNamespaceHooks(useStore, userNamespace);
 
     expect(hook).toBeDefined();
     expectType<UseBoundNamespace<StoreApi<FilterByPrefix<'user', State>>, any>>(
@@ -226,9 +225,11 @@ describe('namespaceHooks', () => {
       )
     );
 
-    const factory = getNamespaceFactory(useStore);
-    const useUser = factory(userNamespace);
-    const useAdmin = factory(adminNamespace);
+    const { user: useUser, admin: useAdmin } = getNamespaceHooks(
+      useStore,
+      userNamespace,
+      adminNamespace
+    );
 
     expect(useUser).toBeDefined();
     expect(useAdmin).toBeDefined();
@@ -339,11 +340,14 @@ describe('createNamespace', () => {
       )
     );
 
-    const factory = getNamespaceFactory(useStore);
-    const useNamespaceStore = factory(namespace);
-    const subFactory = getNamespaceFactory(useNamespaceStore);
-    const useSubNamespaceStore = subFactory(subNamespace);
-
+    const { namespace: useNamespaceStore } = getNamespaceHooks(
+      useStore,
+      namespace
+    );
+    const { subNamespace: useSubNamespaceStore } = getNamespaceHooks(
+      useNamespaceStore,
+      subNamespace
+    );
     expectType<string>(useNamespaceStore.getRawState().namespace_key);
     expectType<string>(
       useNamespaceStore.getRawState().namespace_subNamespace_key

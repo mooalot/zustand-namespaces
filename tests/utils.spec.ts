@@ -4,7 +4,7 @@ import { Namespace } from '../src/types';
 import {
   createNamespace,
   fromNamespace,
-  getNamespaceFactory,
+  getNamespaceHooks,
   getPrefixedObject,
   getUnprefixedObject,
   namespaced,
@@ -105,10 +105,14 @@ describe('Utility Functions', () => {
       )
     );
 
-    const factory = getNamespaceFactory(useStore);
-    const useNamespaceStore = factory(namespace);
-    const subFactory = getNamespaceFactory(useNamespaceStore);
-    const useSubNamespaceStore = subFactory(subNamespace);
+    const { namespace: useNamespaceStore } = getNamespaceHooks(
+      useStore,
+      namespace
+    );
+    const { subNamespace: useSubNamespaceStore } = getNamespaceHooks(
+      useNamespaceStore,
+      subNamespace
+    );
 
     expect(useNamespaceStore.getRawState()).toEqual({
       namespace_key: 'value',

@@ -173,39 +173,41 @@ function spreadTransformedNamespaces<
   return spreadNamespaces(namespaces, transformCallback(...args)) as any;
 }
 
-export function getNamespaceFactory<
-  S extends StoreApi<any>,
+export function getNamespaceHooks<
+  S extends StoreApi<any> & { namespaces: any },
+  Namespaces extends readonly Namespace<any, string, any, any>[],
   CurrentNamespaces extends readonly Namespace<any, string, any, any>[] = []
 >(
-  store: UseBoundStore<S> | UseBoundNamespace<S, CurrentNamespaces>
-): <NewNamespace extends Namespace<any, string, any, any>>(
-  namespace: NewNamespace
-) => UseBoundNamespace<
-  S extends { namespaces: any }
-    ? S extends StoreApi<any>
-      ? NewNamespace['name'] extends keyof S['namespaces']
-        ? S['namespaces'][NewNamespace['name']] &
-            StoreApi<FilterByPrefix<NewNamespace['name'], ExtractState<S>>>
-        : never
-      : never
-    : never,
-  [...CurrentNamespaces, NewNamespace] // Track the current namespace chain
-> {
-  return (namespace) => getOneNamespaceHook(store, namespace) as any;
+  store: UseBoundStore<S> | UseBoundNamespace<S, CurrentNamespaces>,
+  ...namespaces: Namespaces
+) {
+  return namespaces.reduce(
+    (acc, namespace) => {
+      return {
+        ...acc,
+        [namespace.name]: getOneNamespaceHook(store, namespace),
+      };
+    },
+    {} as {
+      [NewNamespace in Namespaces[number] as NewNamespace extends Namespace<
+        any,
+        infer N,
+        any,
+        any
+      >
+        ? N extends string
+          ? N
+          : never
+        : never]: UseBoundNamespace<
+        NewNamespace['name'] extends keyof S['namespaces']
+          ? S['namespaces'][NewNamespace['name']] &
+              StoreApi<FilterByPrefix<NewNamespace['name'], ExtractState<S>>>
+          : never,
+        [...CurrentNamespaces, NewNamespace]
+      >; // Track the current namespace chain
+    }
+  );
 }
-
-type FindMatchingNamespace<
-  S extends { namespaces?: Record<string, any> },
-  Name extends string
-> = Name extends keyof S
-  ? S[Name]
-  : S extends { namespaces: infer N }
-  ? N extends Record<string, any>
-    ? {
-        [K in keyof N]: FindMatchingNamespace<N[K], Name>;
-      }[keyof N]
-    : never
-  : never;
 
 function getOneNamespaceHook<
   Name extends string,

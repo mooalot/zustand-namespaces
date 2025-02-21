@@ -2,7 +2,7 @@ import { temporal } from 'zundo';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { ExtractNamespace, ExtractNamespaces } from '../src/types';
-import { createNamespace, getNamespaceFactory, namespaced } from '../src/utils';
+import { createNamespace, getNamespaceHooks, namespaced } from '../src/utils';
 
 type SubNamespace = {
   data: string;
@@ -54,19 +54,20 @@ type AppState = ExtractNamespaces<[typeof n1, typeof n2]>;
 
 const useStore = create<AppState>()(namespaced({ namespaces: [n1, n2] }));
 
-const factory = getNamespaceFactory(useStore);
-export const useNamespace1 = factory(n1);
-export const useNamespace2 = factory(n2);
-const subFactory = getNamespaceFactory(useNamespace1);
-export const useSubNamespace = subFactory(s1);
+export const { namespace1: useNamespace1, namespace2: useNamespace2 } =
+  getNamespaceHooks(useStore, n1, n2);
+export const { namespace: useSubNamespace } = getNamespaceHooks(
+  useNamespace1,
+  s1
+);
 
-// useStore.namespaces.namespace1.temporal.getState();
-// useStore.namespaces.namespace2.persist.clearStorage();
-// useNamespace1.temporal;
-// useNamespace2.persist.clearStorage();
+useStore.namespaces.namespace1.temporal.getState();
+useStore.namespaces.namespace2.persist.clearStorage();
+useNamespace1.temporal;
+useNamespace2.persist.clearStorage();
 
-// useNamespace1.namespaces.namespace.temporal.getState();
-// useNamespace1((state) => state.data);
+useNamespace1.namespaces.namespace.temporal.getState();
+useNamespace1((state) => state.data);
 
-// useSubNamespace.persist.clearStorage();
-// useSubNamespace((state) => state.data);
+useSubNamespace.persist.clearStorage();
+useSubNamespace((state) => state.data);

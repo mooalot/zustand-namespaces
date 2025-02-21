@@ -5,7 +5,7 @@ import { afterEach, expect, test } from 'vitest';
 import { temporal } from 'zundo';
 import { create } from 'zustand';
 import { createJSONStorage, persist, StateStorage } from 'zustand/middleware';
-import { createNamespace, namespaced, getNamespaceFactory } from '../src/utils';
+import { createNamespace, namespaced, getNamespaceHooks } from '../src/utils';
 
 const storage: { [key: string]: string } = {};
 
@@ -65,11 +65,9 @@ const useStore = create(
   namespaced(() => ({ foo: 'hi' }), { namespaces: [n1, n2] })
 );
 
-const factory = getNamespaceFactory(useStore);
-const useNamespace1 = factory(n1);
-const useNamespace2 = factory(n2);
-const subFactory = getNamespaceFactory(useNamespace1);
-const useSubNamespace = subFactory(sn);
+const { namespace1: useNamespace1, namespace2: useNamespace2 } =
+  getNamespaceHooks(useStore, n1, n2);
+const { subNamespace: useSubNamespace } = getNamespaceHooks(useNamespace1, sn);
 
 const Namespace1Component = () => {
   const data = useNamespace1((state) => state.data);
