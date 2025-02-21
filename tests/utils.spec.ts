@@ -93,16 +93,15 @@ describe('Utility Functions', () => {
     }));
     const namespace = createNamespace(
       'namespace',
-      namespaced(() => ({ key: 'value' }), { namespaces: [subNamespace] })
+      namespaced((state) => () => ({ key: 'value', ...state }), {
+        namespaces: [subNamespace],
+      })
     );
 
     const useStore = create(
-      namespaced(
-        () => ({
-          key: 'value',
-        }),
-        { namespaces: [namespace] }
-      )
+      namespaced((state) => () => ({ key: 'value', ...state }), {
+        namespaces: [namespace],
+      })
     );
 
     const { namespace: useNamespaceStore } = getNamespaceHooks(
@@ -129,7 +128,9 @@ describe('Utility Functions', () => {
     }));
     const namespace = createNamespace(
       'namespace',
-      namespaced(() => ({ key: 'value' }), { namespaces: [subNamespace] })
+      namespaced((state) => () => ({ key: 'value', ...state }), {
+        namespaces: [subNamespace],
+      })
     );
 
     const state = {

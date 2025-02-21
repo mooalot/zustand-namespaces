@@ -27,9 +27,16 @@ type Namespace1 = ExtractNamespace<typeof s1> & {
 const n1 = createNamespace<Namespace1>()(
   'namespace1',
   namespaced(
-    temporal(() => ({
-      data: 'hi',
-    })),
+    (namespacedState) =>
+      temporal(
+        () => ({
+          data: 'hi',
+          ...namespacedState,
+        }),
+        {
+          partialize: (state) => ({ data: state.namespace_data }),
+        }
+      ),
     {
       namespaces: [s1],
     }

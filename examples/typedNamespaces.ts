@@ -23,8 +23,9 @@ const namespaces = [namespace1, namespace2];
 type AppState = ExtractNamespaces<typeof namespaces> & { hi: string };
 
 const useStore = create<AppState>()(
-  // NOTE THE PARENTHESIS HERE (only when explicitly typed)
-  namespaced()(() => ({ hi: 'hi' }), { namespaces })
+  namespaced((namespacedState) => () => ({ hi: 'hi', ...namespacedState }), {
+    namespaces,
+  })
 );
 
 export const { namespace1: useNamespace1, namespace2: useNamespace2 } =

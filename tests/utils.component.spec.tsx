@@ -40,12 +40,13 @@ type Namespace1WithSubNamespace1 = Namespace1 &
 // Define namespacesƒ
 const namespace1 = createNamespace<Namespace1WithSubNamespace1>()(
   'namespace1',
-  namespaced()(
-    (set) => ({
+  namespaced(
+    (state) => (set) => ({
       dataInNamespace1: 'Initial Namespace1 Data',
       updateNamespace1Data: (data) => set({ dataInNamespace1: data }),
       resetNamespace1Data: () =>
         set({ dataInNamespace1: 'Initial Namespace1 Data' }),
+      ...state,
     }),
     {
       namespaces: [subNamespace],
@@ -64,7 +65,7 @@ const namespaces = [namespace1, namespace2];
 type AppState = ExtractNamespaces<typeof namespaces>;
 
 // Create zustand store
-const useStore = create<AppState>()(namespaced()(() => ({}), { namespaces }));
+const useStore = create<AppState>()(namespaced({ namespaces }));
 
 const { namespace1: useNamespace1, namespace2: useNamespace2 } =
   getNamespaceHooks(useStore, namespace1, namespace2);

@@ -230,6 +230,7 @@ function getOneNamespaceHook<
   }) as BoundStore;
 
   const store = useStore as unknown as WithNames<StoreApi<Store>>;
+  console.log(store);
   const originalApi: WithNames<StoreApi<Store>> =
     store.namespaces[namespace.name];
 
@@ -296,52 +297,36 @@ export const createNamespace = ((one?: any, two?: any) => {
 }) as CreateNamespace;
 
 export const namespaced = ((one?: any, two?: any) => {
-  if (!one && !two) {
-    return (creator: any, options: any) => {
-      const { namespaces } = options;
-      console.log('namespaces', namespaces);
-      return (set: any, get: any, api: any) => {
-        const apiWithNamespaces = Object.assign(api, {
-          namespaces: {},
-        });
-        return {
-          ...spreadTransformedNamespaces(
-            namespaces,
-            set,
-            get,
-            apiWithNamespaces
-          ),
-          ...creator(set, get, apiWithNamespaces),
-        };
-      };
-    };
-  } else if (!two) {
-    return (creator: any) => {
-      const { namespaces } = one;
-      return (set: any, get: any, api: any) => {
-        const apiWithNamespaces = Object.assign(api, {
-          namespaces: {},
-        });
-        return {
-          ...spreadTransformedNamespaces(
-            namespaces,
-            set,
-            get,
-            apiWithNamespaces
-          ),
-          ...creator(set, get, apiWithNamespaces),
-        };
+  if (!two) {
+    console.log('one arguement');
+    const { namespaces } = one;
+    return (
+      set: StoreApi<any>['setState'],
+      get: StoreApi<any>['getState'],
+      api: StoreApi<any>
+    ) => {
+      console.log('api', api);
+      const apiWithNamespaces = Object.assign(api, {
+        namespaces: {},
+      });
+      console.log('api', apiWithNamespaces);
+      return {
+        ...spreadTransformedNamespaces(namespaces, set, get, apiWithNamespaces),
       };
     };
   } else {
-    const { namespaces } = two;
+    const callback = one as (state: any) => StateCreator<any>;
+    const { namespaces } = two as {
+      namespaces: Namespace<any, string, any, any>[];
+    };
     return (set: any, get: any, api: any) => {
       const apiWithNamespaces = Object.assign(api, {
         namespaces: {},
       });
       return {
-        ...spreadTransformedNamespaces(namespaces, set, get, apiWithNamespaces),
-        ...one(set, get, apiWithNamespaces),
+        ...callback(
+          spreadTransformedNamespaces(namespaces, set, get, apiWithNamespaces)
+        )(set, get, apiWithNamespaces),
       };
     };
   }

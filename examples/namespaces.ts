@@ -11,8 +11,9 @@ const namespaceB = createNamespace('namespaceB', () => ({
 
 const useStore = create(
   namespaced(
-    () => ({
+    (namespacedState) => () => ({
       mainData: 'data',
+      ...namespacedState,
     }),
     {
       namespaces: [namespaceA, namespaceB],

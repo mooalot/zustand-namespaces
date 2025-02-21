@@ -165,34 +165,18 @@ export type Namespaced = {
     Mps extends [StoreMutatorIdentifier, unknown][] = [],
     Mcs extends [StoreMutatorIdentifier, unknown][] = []
   >(
-    creator: StateCreator<
-      T,
+    creator: (
+      namespacedState: ExtractNamespaces<Namespaces>
+    ) => StateCreator<
+      Result,
       [...Mps, ['zustand-namespaces', Namespaces]],
       Mcs,
-      T
+      Result
     >,
     options: {
       namespaces: Namespaces;
     }
   ): StateCreator<Result, Mps, [['zustand-namespaces', Namespaces], ...Mcs]>;
-  (): <
-    T,
-    Namespaces extends readonly Namespace<any, string, any, any>[],
-    Excluded extends ExcludeByPrefix<Namespaces[number]['name'], T>,
-    Result extends Excluded & ExtractNamespaces<Namespaces>,
-    Mps extends [StoreMutatorIdentifier, unknown][] = [],
-    Mcs extends [StoreMutatorIdentifier, unknown][] = []
-  >(
-    creator: StateCreator<
-      Result,
-      [...Mps, ['zustand-namespaces', Namespaces]],
-      Mcs,
-      Excluded
-    >,
-    options: {
-      namespaces: Namespaces;
-    }
-  ) => StateCreator<T, Mps, [['zustand-namespaces', Namespaces], ...Mcs]>;
   <
     T extends ExtractNamespaces<Namespaces>,
     Namespaces extends readonly Namespace<any, string, any, any>[],

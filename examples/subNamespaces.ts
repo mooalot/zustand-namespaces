@@ -8,8 +8,9 @@ const subNamespace = createNamespace('subNamespace', () => ({
 const namespaceA = createNamespace(
   'namespaceA',
   namespaced(
-    () => ({
+    (namespacedState) => () => ({
       dataInNamespaceA: 'data',
+      ...namespacedState,
     }),
     {
       namespaces: [subNamespace],
@@ -23,8 +24,9 @@ const namespaceB = createNamespace('namespaceB', () => ({
 
 const useStore = create(
   namespaced(
-    () => ({
+    (namespacedState) => () => ({
       mainData: 'data',
+      ...namespacedState,
     }),
     {
       namespaces: [namespaceA, namespaceB],

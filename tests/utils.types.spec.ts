@@ -139,9 +139,9 @@ describe('divide', () => {
 
     create(
       namespaced(
-        (set) => {
+        (state) => (set) => {
           expectType<StoreApi<State>['setState']>(set);
-          return {};
+          return state;
         },
         { namespaces: [userNamespace, adminNamespace] }
       )
@@ -159,12 +159,7 @@ describe('divide', () => {
     }));
 
     const useStore = create(
-      namespaced(
-        () => ({
-          admin_level: 1,
-        }),
-        { namespaces: [userNamespace, adminNamespace] }
-      )
+      namespaced({ namespaces: [userNamespace, adminNamespace] })
     );
 
     expectType<UseBoundStore<StoreApi<State>>>(useStore);
@@ -183,8 +178,9 @@ describe('namespaceHook', () => {
 
     const useStore = create<State>()(
       namespaced(
-        () => ({
+        (state) => () => ({
           admin_level: 1,
+          ...state,
         }),
         { namespaces: [userNamespace] }
       )
@@ -218,8 +214,8 @@ describe('namespaceHooks', () => {
 
     const useStore = create<State>()(
       namespaced(
-        () => ({
-          admin_level: 1,
+        (state) => () => ({
+          ...state,
         }),
         { namespaces: [userNamespace, adminNamespace] }
       )
@@ -328,13 +324,16 @@ describe('createNamespace', () => {
     }));
     const namespace = createNamespace(
       'namespace',
-      namespaced(() => ({ key: 'value' }), { namespaces: [subNamespace] })
+      namespaced((state) => () => ({ key: 'value', ...state }), {
+        namespaces: [subNamespace],
+      })
     );
 
     const useStore = create(
       namespaced(
-        () => ({
+        (state) => () => ({
           key: 'value',
+          ...state,
         }),
         { namespaces: [namespace] }
       )

@@ -38,10 +38,12 @@ const sn = createNamespace<{ data: string }>()(
 
 const n1 = createNamespace<{ data: string; subNamespace_data: string }>()(
   'namespace1',
-  namespaced()(
-    temporal(() => ({
-      data: 'hi',
-    })),
+  namespaced(
+    (state) =>
+      temporal(() => ({
+        data: 'hi',
+        ...state,
+      })),
     {
       namespaces: [sn],
     }
@@ -62,7 +64,9 @@ const n2 = createNamespace<{ data: string }>()(
 );
 
 const useStore = create(
-  namespaced(() => ({ foo: 'hi' }), { namespaces: [n1, n2] })
+  namespaced((state) => () => ({ foo: 'hi', ...state }), {
+    namespaces: [n1, n2],
+  })
 );
 
 const { namespace1: useNamespace1, namespace2: useNamespace2 } =

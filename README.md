@@ -41,8 +41,8 @@ const useStore = create(
   )
 );
 
-export const [useNamespaceA] = getNamespaceHooks(useStore, namespaceA);
-export const [useNamespaceB] = getNamespaceHooks(useStore, namespaceB);
+export const { namespaceA: useNamespaceA, namespaceB: useNamespaceB } =
+  getNamespaceHooks(useStore, namespaceA, namespaceB);
 
 useStore((state) => state.namespaceA_dataInNamespaceA);
 useStore((state) => state.namespaceB_dataInNamespaceB);

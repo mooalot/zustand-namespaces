@@ -26,17 +26,15 @@ type NotNamespacedData = {
 type AppState = ExtractNamespaces<typeof namespaces> & NotNamespacedData;
 
 const useStore = create<AppState>()(
-  namespaced()(
-    () => ({
+  namespaced(
+    (namespacedState) => () => ({
       foo: 'bar',
+      ...namespacedState,
     }),
     { namespaces: namespaces }
   )
 );
 
-// const factory = getNamespaceFactory(useStore);
-// export const useNamespace1 = factory(namespace1);
-// export const useNamespace2 = factory(namespace2);
 export const { namespace1: useNamespace1, namespace2: useNamespace2 } =
   getNamespaceHooks(useStore, namespace1, namespace2);
 
