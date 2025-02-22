@@ -244,9 +244,14 @@ describe('Zustand Namespaces with Components', () => {
 
   test('should be able to update data from namespace1 from root store and undo it from namespace1', () => {
     render(<App />);
+    const temporalState = useStore.namespaces.namespace1.temporal;
+
+    console.log('before', temporalState.getState().pastStates);
     act(() => {
       useStore.setState({ namespace1_data: 'New Namespace1 Data' });
     });
+
+    console.log('after', temporalState.getState().pastStates);
     expect(screen.getByTestId('namespace1-data')).toHaveTextContent(
       'New Namespace1 Data'
     );
@@ -256,5 +261,24 @@ describe('Zustand Namespaces with Components', () => {
     expect(screen.getByTestId('namespace1-data')).toHaveTextContent(
       'Initial Namespace1 Data'
     );
+  });
+
+  test('should do things', () => {
+    render(<App />);
+    expect(screen.getByTestId('namespace1-data')).toHaveTextContent(
+      'Initial Namespace1 Data'
+    );
+    act(() => {
+      useStore.setState({ namespace1_data: 'New Namespace1 Data' });
+    });
+    expect(screen.getByTestId('namespace1-data')).toHaveTextContent(
+      'New Namespace1 Data'
+    );
+    // act(() => {
+    //   useStore.namespaces.namespace1.temporal.getState().undo();
+    // });
+    // expect(screen.getByTestId('namespace1-data')).toHaveTextContent(
+    //   'Initial Namespace1 Data'
+    // );
   });
 });
