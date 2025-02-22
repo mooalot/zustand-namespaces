@@ -37,20 +37,24 @@ function getNamespacedApi<T extends object, Name extends string>(
       const unprefixedState = getUnprefixedObject(namespace.name, currentState);
       const updatedState =
         typeof state === 'function' ? state(unprefixedState) : state;
-      if (replace) {
-        const prefixedState = getPrefixedObject(
-          namespace.name,
-          unprefixedState
-        );
-        const newState = { ...currentState };
-        for (const key in prefixedState) {
-          delete newState[key];
-        }
-        return {
-          ...newState,
-          ...getPrefixedObject(namespace.name, updatedState),
-        };
-      }
+
+      //todo fix this
+      // if (replace) {
+      //   const prefixedState = getPrefixedObject(
+      //     namespace.name,
+      //     unprefixedState
+      //   );
+      //   const newState = { ...currentState };
+      //   for (const key in prefixedState) {
+      //     delete newState[key];
+      //   }
+
+      //   return {
+      //     ...newState,
+      //     ...getPrefixedObject(namespace.name, updatedState),
+      //   };
+      // }
+
       const newState = getPrefixedObject(namespace.name, updatedState);
       console.log('does it have payload', !!api._payload);
       if (!!api._payload) {
@@ -59,7 +63,7 @@ function getNamespacedApi<T extends object, Name extends string>(
           ...newState,
         };
         console.log('new payload', api._payload);
-      } else api.setState(newState);
+      } else api.setState(newState as T);
     },
     subscribe: (listener) => {
       return api.subscribe((newState, oldState) => {
@@ -69,25 +73,11 @@ function getNamespacedApi<T extends object, Name extends string>(
         );
       });
     },
-    namespaces: api.namespaces,
+    namespaces: {},
     namespacePath: [...(api.namespacePath ?? []), namespace],
   };
 
-  return new Proxy(namespacedApi, {
-    set: (target, prop, value) => {
-      Object.assign(api, {
-        namespaces: {
-          ...api.namespaces,
-          [namespace.name]: {
-            ...api.namespaces[namespace.name],
-            [String(prop)]: value,
-          },
-        },
-      });
-
-      return Reflect.set(target, prop, value);
-    },
-  });
+  return namespacedApi;
 }
 
 export function transformStateCreatorArgs<
@@ -157,10 +147,7 @@ function transformCallback<State extends object>(
     Object.assign(originalApi, {
       namespaces: {
         ...originalApi.namespaces,
-        [namespace.name]: {
-          ...originalApi.namespaces[namespace.name],
-          ...api,
-        },
+        [namespace.name]: api,
       },
     });
     return getPrefixedObject(namespace.name, namespace.creator(set, get, api));
@@ -319,27 +306,32 @@ function getRootApi<Store extends object>(
             newState,
             ...(namespaceApi?.namespacePath ?? [])
           );
-          console.log('namespaceState', namespaceApi.setState.toString());
-          namespaceApi.setState(namespaceState, replace as any);
-          console.log('Blah');
+          if (Object.keys(namespaceState).length > 0)
+            namespaceApi.setState(namespaceState, replace as any);
           const originalState = fromNamespace(
             namespaceState,
             ...(namespaceApi.namespacePath ?? [])
           );
-          console.log('originalState', originalState);
+          console.log(
+            'namespace to delete',
+            JSON.parse(JSON.stringify(originalState))
+          );
           for (const key in originalState) {
             delete newState[key];
           }
         }
       }
-      console.log('cunna get namespaced', newState);
+      console.log('gunna get namespaced', newState);
       callSetOnNamespaces(newState, api.namespaces);
       console.log('newState', newState);
 
       const payload = api._payload;
       console.log('payload', payload);
       delete api._payload;
-      return payload;
+      return {
+        ...newState,
+        ...payload,
+      };
     });
   };
 
@@ -365,7 +357,7 @@ export const namespaced = ((one?: any, two?: any) => {
         ...spreadTransformedNamespaces(
           namespaces,
           rootApi.setState,
-          get,
+          rootApi.getState,
           rootApi
         ),
       };

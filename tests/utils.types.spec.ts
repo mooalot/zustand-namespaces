@@ -294,8 +294,8 @@ describe('namespaceToState', () => {
 
     const deepNamespacedState = fromNamespace(
       state,
-      subNamespace,
-      userNamespace
+      userNamespace,
+      subNamespace
     );
 
     expect(deepNamespacedState).toEqual({
