@@ -32,28 +32,11 @@ function getNamespacedApi<T extends object, Name extends string>(
     getState: () => {
       return getUnprefixedObject(namespace.name, api.getState());
     },
-    setState: (state, replace) => {
+    setState: (state) => {
       const currentState = api.getState();
       const unprefixedState = getUnprefixedObject(namespace.name, currentState);
       const updatedState =
         typeof state === 'function' ? state(unprefixedState) : state;
-
-      //todo fix this
-      // if (replace) {
-      //   const prefixedState = getPrefixedObject(
-      //     namespace.name,
-      //     unprefixedState
-      //   );
-      //   const newState = { ...currentState };
-      //   for (const key in prefixedState) {
-      //     delete newState[key];
-      //   }
-
-      //   return {
-      //     ...newState,
-      //     ...getPrefixedObject(namespace.name, updatedState),
-      //   };
-      // }
 
       const newState = getPrefixedObject(namespace.name, updatedState);
       console.log('does it have payload', !!api._payload);

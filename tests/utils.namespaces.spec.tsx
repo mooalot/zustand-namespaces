@@ -8,6 +8,7 @@ import { ExtractNamespace, ExtractNamespaces } from '../src/types';
 
 const subNamespace = createNamespace('subNamespace', () => ({
   data: 'Initial SubNamespace Data',
+  data2: 'Initial SubNamespace Data 2',
 }));
 
 // Define namespacesƒ
@@ -70,6 +71,11 @@ describe('Zustand Namespace Stores', () => {
 
     expect(namespaces.namespace).toBeTruthy();
     expect(namespaces.namespace.namespaces.subNamespace).toBeTruthy();
+  });
+
+  test('should have namespacs should have a path', () => {
+    expect(useNamespace.namespacePath).toHaveLength(1);
+    expect(useSubNamespace.namespacePath).toHaveLength(2);
   });
 });
 
