@@ -17,6 +17,8 @@ export type WithNames<T> = T & {
   namespaces: any;
   namespacePath?: Namespace[];
   _payload?: any;
+  stop?: boolean;
+  parentApi?: any;
 };
 
 export type ExtractNamespace<T> = ExtractNamespaceType<T>;
@@ -128,10 +130,9 @@ export type MergeMs<
 > = Ms extends [[infer M, infer A], ...infer Rest]
   ? Rest extends [StoreMutatorIdentifier, unknown][]
     ? M extends keyof StoreMutators<S, A>
-      ? MergeMs<
-          S,
-          Rest,
-          Current & Omit<StoreMutators<S, A>[M], keyof StoreApi<any>>
+      ? Omit<
+          MergeMs<S, Rest, Current & StoreMutators<S, A>[M]>,
+          keyof StoreApi<any>
         >
       : Current
     : Current
@@ -147,8 +148,8 @@ export type WithNamespaces<S, A> = A extends Namespace<any, string, any, any>[]
             ? N extends string
               ? N
               : never
-            : never]: NS extends Namespace<any, any, any, infer Mcs>
-            ? MergeMs<S, Mcs>
+            : never]: NS extends Namespace<infer T, any, any, infer Mcs>
+            ? MergeMs<S, Mcs> & StoreApi<T>
             : // eslint-disable-next-line
               {};
         };

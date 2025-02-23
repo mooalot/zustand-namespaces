@@ -33,19 +33,19 @@ function getNamespacedApi<T extends object, Name extends string>(
       return getUnprefixedObject(namespace.name, api.getState());
     },
     setState: (state) => {
+      // log is used for testing purposes
+      console.debug(`test: setState_${namespace.name}`);
       const currentState = api.getState();
       const unprefixedState = getUnprefixedObject(namespace.name, currentState);
       const updatedState =
         typeof state === 'function' ? state(unprefixedState) : state;
 
       const newState = getPrefixedObject(namespace.name, updatedState);
-      console.log('does it have payload', !!api._payload);
       if (!!api._payload) {
         api._payload = {
           ...api._payload,
           ...newState,
         };
-        console.log('new payload', api._payload);
       } else api.setState(newState as T);
     },
     subscribe: (listener) => {
@@ -58,6 +58,7 @@ function getNamespacedApi<T extends object, Name extends string>(
     },
     namespaces: {},
     namespacePath: [...(api.namespacePath ?? []), namespace],
+    parentApi: api,
   };
 
   return namespacedApi;
@@ -273,9 +274,18 @@ function getRootApi<Store extends object>(
   api: WithNames<StoreApi<Store>>
 ): WithNames<StoreApi<Store>> {
   const originalSet = api.setState;
-  const setState: StoreApi<Store>['setState'] = (state, replace) => {
+  const setState: StoreApi<Store>['setState'] = (state) => {
+    // console.log('api stop', api.stop, api.namespacePath);
+    // if (api.stop) {
+    //   console.log('deleting stop');
+    //   delete api.stop;
+    //   return originalSet(state);
+    // }
+    // if (api.parentApi) {
+    //   console.log('setting stop to true');
+    //   api.parentApi.stop = true;
+    // }
     return originalSet((currentState) => {
-      console.log('calling set state');
       api._payload = {};
       const newState =
         typeof state === 'function' ? state(currentState) : state;
@@ -284,29 +294,24 @@ function getRootApi<Store extends object>(
         namespaces: Record<string, WithNames<StoreApi<any>>>
       ) {
         for (const namespace in namespaces) {
+          if (Object.keys(newState).length === 0) break;
           const namespaceApi = namespaces[namespace];
           const namespaceState = toNamespace(
             newState,
             ...(namespaceApi?.namespacePath ?? [])
           );
           if (Object.keys(namespaceState).length > 0)
-            namespaceApi.setState(namespaceState, replace as any);
+            namespaceApi.setState(namespaceState);
           const originalState = fromNamespace(
             namespaceState,
             ...(namespaceApi.namespacePath ?? [])
-          );
-          console.log(
-            'namespace to delete',
-            JSON.parse(JSON.stringify(originalState))
           );
           for (const key in originalState) {
             delete newState[key];
           }
         }
       }
-      console.log('gunna get namespaced', newState);
       callSetOnNamespaces(newState, api.namespaces);
-      console.log('newState', newState);
 
       const payload = api._payload;
       console.log('payload', payload);
@@ -365,10 +370,10 @@ export const namespaced = ((one?: any, two?: any) => {
           spreadTransformedNamespaces(
             namespaces,
             rootApi.setState,
-            get,
+            rootApi.getState,
             rootApi
           )
-        )(rootApi.setState, get, rootApi),
+        )(rootApi.setState, rootApi.getState, rootApi),
       };
     };
   }

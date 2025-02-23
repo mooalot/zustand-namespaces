@@ -14,11 +14,14 @@ import {
 } from '../src/utils';
 import { StoreApi, StateCreator, create, UseBoundStore } from 'zustand';
 import {
+  ExtractNamespace,
   FilterByPrefix,
   Namespace,
   PrefixObject,
   UseBoundNamespace,
 } from '../src/types';
+import { temporal, TemporalState } from 'zundo';
+import { persist } from 'zustand/middleware';
 
 type State = {
   user_name: string;
@@ -354,5 +357,77 @@ describe('createNamespace', () => {
     expectType<string>(
       useSubNamespaceStore.getRawState().namespace_subNamespace_key
     );
+  });
+
+  test('should create a store with typed api of namespaces', () => {
+    const subNamespace = createNamespace(
+      'subNamespace',
+      temporal(() => ({
+        key: 'value',
+      }))
+    );
+    const namespace = createNamespace(
+      'namespace',
+      namespaced(
+        (state) =>
+          persist(() => ({ key: 'value', ...state }), {
+            name: 'namespace',
+          }),
+        {
+          namespaces: [subNamespace],
+        }
+      )
+    );
+
+    type State = ExtractNamespace<typeof namespace>;
+
+    // Create zustand store
+    const useStore = create(namespaced({ namespaces: [namespace] }));
+
+    const { namespace: useNamespace } = getNamespaceHooks(useStore, namespace);
+    const { subNamespace: useSubNamespace } = getNamespaceHooks(
+      useNamespace,
+      subNamespace
+    );
+
+    expectType<
+      StoreApi<FilterByPrefix<'namespace', State>> & {
+        namespaces: {
+          subNamespace: StoreApi<FilterByPrefix<'subNamespace', State>>;
+        };
+        persist: {
+          getOptions: Function;
+          setOptions: Function;
+          // ... probably not worth testing all the methods
+        };
+      }
+    >(useStore.namespaces.namespace);
+    expectType<
+      StoreApi<
+        FilterByPrefix<'subNamespace', FilterByPrefix<'namespace', State>>
+      > & {
+        temporal: StoreApi<
+          TemporalState<
+            FilterByPrefix<'subNamespace', FilterByPrefix<'namespace', State>>
+          >
+        >;
+      }
+    >(useStore.namespaces.namespace.namespaces.subNamespace);
+
+    expectType<
+      UseBoundNamespace<
+        StoreApi<FilterByPrefix<'namespace', State>>,
+        [typeof namespace]
+      >
+    >(useNamespace);
+
+    expectType<
+      UseBoundNamespace<
+        StoreApi<
+          FilterByPrefix<'subNamespace', FilterByPrefix<'namespace', State>>
+        >,
+        [typeof namespace, typeof subNamespace]
+      >
+    >(useSubNamespace);
   });
 });
