@@ -115,7 +115,7 @@ export type UseBoundNamespace<
 > = UseBoundStore<S> & {
   getRawState: () => UnNamespacedState<ExtractState<S>, Namespaces>;
   /**
-   * The path of namespaces to get to root store. (e.g. ['subNamespace1', 'namespace1'])
+   * The path of namespaces to get to root store. (e.g. ['namespace1','subNamespace1'])
    */
   namespacePath: Namespaces;
 };
@@ -157,23 +157,16 @@ export type Namespaced = {
   <
     T,
     Namespaces extends readonly Namespace<any, string, any, any>[],
-    Excluded extends ExcludeByPrefix<Namespaces[number]['name'], T>,
-    Result extends Excluded & ExtractNamespaces<Namespaces>,
     Mps extends [StoreMutatorIdentifier, unknown][] = [],
     Mcs extends [StoreMutatorIdentifier, unknown][] = []
   >(
     creator: (
       namespacedState: ExtractNamespaces<Namespaces>
-    ) => StateCreator<
-      Result,
-      [...Mps, ['zustand-namespaces', Namespaces]],
-      Mcs,
-      Result
-    >,
+    ) => StateCreator<T, [...Mps, ['zustand-namespaces', Namespaces]], Mcs, T>,
     options: {
       namespaces: Namespaces;
     }
-  ): StateCreator<Result, Mps, [['zustand-namespaces', Namespaces], ...Mcs]>;
+  ): StateCreator<T, Mps, [['zustand-namespaces', Namespaces], ...Mcs]>;
   <
     T extends ExtractNamespaces<Namespaces>,
     Namespaces extends readonly Namespace<any, string, any, any>[],

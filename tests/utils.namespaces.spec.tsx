@@ -1,9 +1,7 @@
-import { act, cleanup, render, screen } from '@testing-library/react';
-import React from 'react';
+import { act, cleanup } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import { create } from 'zustand';
 import { createNamespace, getNamespaceHooks, namespaced } from '../src/utils';
-import { ExtractNamespace, ExtractNamespaces } from '../src/types';
 
 function createStores() {
   const subNamespace = createNamespace('subNamespace', () => ({

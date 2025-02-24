@@ -163,9 +163,11 @@ describe('Utility Functions', () => {
     );
 
     const useStore = create(
-      namespaced((state) => immer(() => ({ key: 'value', ...state })), {
-        namespaces: [namespace],
-      })
+      immer(
+        namespaced((state) => () => ({ key: 'value', ...state }), {
+          namespaces: [namespace],
+        })
+      )
     );
 
     useStore.setState((state) => {

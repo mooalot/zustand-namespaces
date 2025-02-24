@@ -2,9 +2,10 @@
 
 Zustand Namespaces is a modular state management extension for Zustand, enabling a namespace-based approach for greater flexibility, especially in large state structures.
 
-## Cool Features
+## Why Zustand Namespaces?
 
-Namespaces can be nested indefintely and use any middleware compatable with zustand.
+- **Nested Middleware**: Allows for nested middleware, making it easier to manage complex state structures.
+- **Single Store**: All state is stored in a single store, making it easier to manage and debug.
 
 ## Installation
 
@@ -32,8 +33,10 @@ const namespaceB = createNamespace('namespaceB', () => ({
 
 const useStore = create(
   namespaced(
-    () => ({
+    // Namespaced state is passed as an argument for you to use in your store
+    (namespacedState) => () => ({
       mainData: 'data',
+      ...namespacedState,
     }),
     {
       namespaces: [namespaceA, namespaceB],
@@ -74,6 +77,6 @@ More examples can be found in the [examples directory](https://github.com/mooalo
 
 - **createNamespace**: Creates a new state namespace.
 - **namespaced**: The middleware used to join namespaces.
-- **toNamespace**: Extracts a namespace's state from the parent state.
-- **fromNamespace**: Converts namespace state to parent state.
+- **toNamespace**: Extracts a namespace's state from some parent state.
+- **fromNamespace**: Converts namespace state to some parent state.
 - **getNamespaceHooks**: Returns hooks for each namespace.

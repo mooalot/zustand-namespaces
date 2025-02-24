@@ -36,12 +36,17 @@ const sn = createNamespace<{ data: string }>()(
   )
 );
 
-const n1 = createNamespace<{ data: string; subNamespace_data: string }>()(
+const n1 = createNamespace<{
+  data: string;
+  subNamespace_data: string;
+  updateData: (data: string) => void;
+}>()(
   'namespace1',
   namespaced(
     (state) =>
-      temporal(() => ({
+      temporal((set) => ({
         data: 'hi',
+        updateData: (data) => set({ data }),
         ...state,
       })),
     {
@@ -50,7 +55,9 @@ const n1 = createNamespace<{ data: string; subNamespace_data: string }>()(
   )
 );
 
-const n2 = createNamespace<{ data: string }>()(
+const n2 = createNamespace<{
+  data: string;
+}>()(
   'namespace2',
   persist(
     () => ({
@@ -254,6 +261,26 @@ describe('Zustand Namespaces with Components', () => {
     act(() => {
       useStore.namespaces.namespace1.temporal.getState().undo();
     });
+    expect(screen.getByTestId('namespace1-data')).toHaveTextContent(
+      'Initial Namespace1 Data'
+    );
+  });
+
+  test('should be able to undo state that was set within a creator method in namespace 1', () => {
+    render(<App />);
+
+    act(() => {
+      useNamespace1.getState().updateData('New Namespace1 Data');
+    });
+
+    expect(screen.getByTestId('namespace1-data')).toHaveTextContent(
+      'New Namespace1 Data'
+    );
+
+    act(() => {
+      useStore.namespaces.namespace1.temporal.getState().undo();
+    });
+
     expect(screen.getByTestId('namespace1-data')).toHaveTextContent(
       'Initial Namespace1 Data'
     );

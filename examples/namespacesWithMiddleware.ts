@@ -68,13 +68,13 @@ export const { namespace: useSubNamespace } = getNamespaceHooks(
   s1
 );
 
-useStore.namespaces.namespace1.temporal.getState();
-useStore.namespaces.namespace2.persist.clearStorage();
-useNamespace1.temporal;
-useNamespace2.persist.clearStorage();
+// useStore.namespaces.namespace1.temporal.getState();
+// useStore.namespaces.namespace2.persist.clearStorage();
+// useNamespace1.temporal;
+// useNamespace2.persist.clearStorage();
 
-useNamespace1.namespaces.namespace.temporal.getState();
-useNamespace1((state) => state.data);
+// useNamespace1.namespaces.namespace.temporal.getState();
+// useNamespace1((state) => state.data);
 
-useSubNamespace.persist.clearStorage();
-useSubNamespace((state) => state.data);
+// useSubNamespace.persist.clearStorage();
+// useSubNamespace((state) => state.data);

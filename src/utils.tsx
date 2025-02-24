@@ -38,7 +38,7 @@ function getNamespacedApi<T extends object, Name extends string>(
         typeof state === 'function' ? state(unprefixedState) : state;
 
       const newState = getPrefixedObject(namespace.name, updatedState);
-      if (!!api._payload) {
+      if (api._payload) {
         api._payload = {
           ...api._payload,
           ...newState,
@@ -280,60 +280,60 @@ function getRootApi<Store extends object>(
   const setState: StoreApi<Store>['setState'] = (state) => {
     api._payload = {};
 
-    originalSet((currentState) => {
-      let newState = typeof state === 'function' ? state(currentState) : state;
+    const currentState = api.getState();
 
-      newState = { ...newState };
+    let newState = typeof state === 'function' ? state(currentState) : state;
 
-      /**
-       * This function will go through all the namespaces and apply their state to the payload.
-       * It will then remove the keys from the newState that were applied to the payload.
-       * @param newState The new state
-       * @param namespaces The namespaces to apply the state to
-       */
-      function callSetOnNamespaces(
-        newState: any,
-        namespaces: Record<string, WithNames<StoreApi<any>>>
-      ) {
-        for (const name in namespaces) {
-          // break if there are not more keys to apply
-          if (Object.keys(newState).length === 0) break;
-          const namespaceApi = namespaces[name];
-          // Skip if the namespace has already been applied
-          if (namespaceApi._payload) continue;
+    newState = { ...newState };
 
-          // Get the state to apply to the namespace
-          const namespaceState = toNamespace(
-            newState,
-            ...(namespaceApi?.namespacePath ?? [])
-          );
-          // if there are no keys to call setState with, continue
-          if (Object.keys(namespaceState).length === 0) continue;
-          namespaceApi.setState(namespaceState);
+    /**
+     * This function will go through all the namespaces and apply their state to the payload.
+     * It will then remove the keys from the newState that were applied to the payload.
+     * @param newState The new state
+     * @param namespaces The namespaces to apply the state to
+     */
+    function callSetOnNamespaces(
+      newState: any,
+      namespaces: Record<string, WithNames<StoreApi<any>>>
+    ) {
+      for (const name in namespaces) {
+        // break if there are not more keys to apply
+        if (Object.keys(newState).length === 0) break;
+        const namespaceApi = namespaces[name];
+        // Skip if the namespace has already been applied
+        if (namespaceApi._payload) continue;
 
-          // Get the keys that were applied to the namespace
-          const originalState = fromNamespace(
-            namespaceState,
-            ...(namespaceApi.namespacePath ?? [])
-          );
+        // Get the state to apply to the namespace
+        const namespaceState = toNamespace(
+          newState,
+          ...(namespaceApi?.namespacePath ?? [])
+        );
+        // if there are no keys to call setState with, continue
+        if (Object.keys(namespaceState).length === 0) continue;
+        namespaceApi.setState(namespaceState);
 
-          // remove the keys that were applied to the namespace
-          for (const key in originalState) {
-            delete newState[key];
-          }
+        // Get the keys that were applied to the namespace
+        const originalState = fromNamespace(
+          namespaceState,
+          ...(namespaceApi.namespacePath ?? [])
+        );
+
+        // remove the keys that were applied to the namespace
+        for (const key in originalState) {
+          delete newState[key];
         }
       }
+    }
 
-      // Build the payload from the namespaces
-      callSetOnNamespaces(newState, api.namespaces);
+    // Build the payload from the namespaces
+    callSetOnNamespaces(newState, api.namespaces);
 
-      const payload = api._payload;
+    const payload = api._payload;
 
-      // merge the remaining keys that were not applied to the namespaces and the payload from the namespaces
-      return {
-        ...newState,
-        ...payload,
-      };
+    // merge the remaining keys that were not applied to the namespaces and the payload from the namespaces
+    originalSet({
+      ...newState,
+      ...payload,
     });
     // remove the payload so that it is not applied again
     delete api._payload;

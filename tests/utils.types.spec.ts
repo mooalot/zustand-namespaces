@@ -396,8 +396,8 @@ describe('createNamespace', () => {
           subNamespace: StoreApi<FilterByPrefix<'subNamespace', State>>;
         };
         persist: {
-          getOptions: Function;
-          setOptions: Function;
+          getOptions: any;
+          setOptions: any;
           // ... probably not worth testing all the methods
         };
       }
