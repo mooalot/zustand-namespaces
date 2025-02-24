@@ -2,6 +2,11 @@
 
 Zustand Namespaces is a modular state management extension for Zustand, enabling a namespace-based approach for greater flexibility, especially in large state structures.
 
+## Why Zustand Namespaces?
+
+- **Nested Middleware**: Allows for nested middleware, making it easier to manage complex state structures.
+- **Single Store**: All state is stored in a single store, making it easier to manage and debug.
+
 ## Installation
 
 ```bash
@@ -12,35 +17,48 @@ npm install zustand-namespaces
 
 ```javascript
 import { create } from 'zustand';
-import { createNamespace, namespaced } from 'zustand-namespaces';
+import {
+  namespaced,
+  createNamespace,
+  getNamespaceHooks,
+} from 'zustand-namespaces';
 
-const namespaceA = createNamespace(() => ({
-  name: 'namespaceA',
-  creator: () => ({
-    dataInNamespaceA: 'data',
-  }),
+const namespaceA = createNamespace('namespaceA', () => ({
+  dataInNamespaceA: 'data',
 }));
 
-const namespaceB = createNamespace(() => ({
-  name: 'namespaceB',
-  creator: () => ({
-    dataInNamespaceB: 'data',
-  }),
+const namespaceB = createNamespace('namespaceB', () => ({
+  dataInNamespaceB: 'data',
 }));
-
-const namespace = namespaced(namespaceA, namespaceB);
 
 const useStore = create(
-  namespace(() => ({
-    mainData: 'data',
-  }))
+  namespaced(
+    // Namespaced state is passed as an argument for you to use in your store
+    (namespacedState) => () => ({
+      mainData: 'data',
+      ...namespacedState,
+    }),
+    {
+      namespaces: [namespaceA, namespaceB],
+    }
+  )
 );
 
-export const [useNamespaceA, useNamespaceB] = getNamespaceHooks(
-  useStore,
-  namespaceA,
-  namespaceB
-);
+export const { namespaceA: useNamespaceA, namespaceB: useNamespaceB } =
+  getNamespaceHooks(useStore, namespaceA, namespaceB);
+
+useStore((state) => state.namespaceA_dataInNamespaceA);
+useStore((state) => state.namespaceB_dataInNamespaceB);
+useStore((state) => state.mainData);
+useStore.getState;
+useStore.setState;
+
+useNamespaceA((state) => state.dataInNamespaceA);
+useNamespaceA.getState;
+useNamespaceA.setState;
+useNamespaceB((state) => state.dataInNamespaceB);
+useNamespaceB.getState;
+useNamespaceB.setState;
 ```
 
 ## TypeScript Support
@@ -49,7 +67,7 @@ Zustand Namespaces is fully typed for better state safety. See the [examples](ht
 
 ## Middleware Compatibility
 
-Integrates with any Zustand middleware. See the [example](https://github.com/mooalot/zustand-namespaces/blob/main/examples/namespacesWithOptions.ts) for usage.
+Integrates with any Zustand middleware. See the [example](https://github.com/mooalot/zustand-namespaces/blob/main/examples/namespacesWithMiddleware.ts) for usage.
 
 ## Additional Examples
 
@@ -58,11 +76,7 @@ More examples can be found in the [examples directory](https://github.com/mooalo
 ## Key Utilities
 
 - **createNamespace**: Creates a new state namespace.
-- **namespaced**: Combines namespaces into a single state creation method.
-- **spreadNamespaces**: Merges namespace data into a parent state.
-- **toNamespace**: Extracts a namespace's state from the parent state.
-- **fromNamespace**: Converts namespace state to parent state.
-- **partializeNamespaces**: Partializes multiple namespaces at once.
+- **namespaced**: The middleware used to join namespaces.
+- **toNamespace**: Extracts a namespace's state from some parent state.
+- **fromNamespace**: Converts namespace state to some parent state.
 - **getNamespaceHooks**: Returns hooks for each namespace.
-
-For full documentation, visit the [repository](https://github.com/mooalot/zustand-namespaces).

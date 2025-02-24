@@ -1,103 +1,64 @@
+import { ExtractState, StateCreator, StoreApi, UseBoundStore } from 'zustand';
 import {
-  StateCreator,
-  StoreApi,
-  StoreMutatorIdentifier,
-  UseBoundStore,
-} from 'zustand';
-import { shallow } from 'zustand/shallow';
-import {
-  ExcludeByPrefix,
-  ExtractNamespaces,
+  CreateNamespace,
   FilterByPrefix,
-  IncludeByPrefix,
   Namespace,
+  Namespaced,
   NamespacedState,
   PrefixObject,
   UnNamespacedState,
   UseBoundNamespace,
+  WithNames,
 } from './types';
 
+/**
+ * This function will take a namespace and an api and return a new api that is namespaced.
+ * @param namespace The namespace to apply
+ * @param api The api to apply the namespace to
+ */
 function getNamespacedApi<T extends object, Name extends string>(
   namespace: Namespace<FilterByPrefix<Name, T>, Name>,
-  api: StoreApi<T>
-): StoreApi<FilterByPrefix<Name, T>> {
-  const namespacedApi: StoreApi<FilterByPrefix<Name, T>> = {
+  api: WithNames<StoreApi<T>>
+): WithNames<StoreApi<FilterByPrefix<Name, T>>> {
+  const namespacedApi: WithNames<StoreApi<FilterByPrefix<Name, T>>> = {
     getInitialState: () => {
       return getUnprefixedObject(namespace.name, api.getInitialState());
     },
     getState: () => {
       return getUnprefixedObject(namespace.name, api.getState());
     },
-    setState: (state, replace) => {
-      api.setState((currentState) => {
-        const unprefixedState = getUnprefixedObject(
-          namespace.name,
-          currentState
-        );
-        const updatedState =
-          typeof state === 'function' ? state(unprefixedState) : state;
-        if (replace) {
-          const prefixedState = getPrefixedObject(
-            namespace.name,
-            unprefixedState
-          );
-          const newState = { ...currentState };
-          for (const key in prefixedState) {
-            delete newState[key];
-          }
-          return {
-            ...newState,
-            ...getPrefixedObject(namespace.name, updatedState),
-          };
-        }
-        return getPrefixedObject(namespace.name, updatedState) as T;
-      });
+    setState: (state) => {
+      /**
+       * Log is used for testing purposes. Specifically to test that the setState method is only called once per setState call.
+       */
+      console.debug(`test: setState_${namespace.name}`);
+      const currentState = api.getState();
+      const unprefixedState = getUnprefixedObject(namespace.name, currentState);
+      const updatedState =
+        typeof state === 'function' ? state(unprefixedState) : state;
+
+      const newState = getPrefixedObject(namespace.name, updatedState);
+      if (api._payload) {
+        api._payload = {
+          ...api._payload,
+          ...newState,
+        };
+      } else api.setState(newState as T);
     },
     subscribe: (listener) => {
       return api.subscribe((newState, oldState) => {
-        const newUnprefixedState = getUnprefixedObject(
-          namespace.name,
-          newState
-        );
-        const oldUnprefixedState = getUnprefixedObject(
-          namespace.name,
-          oldState
-        );
-        if (shallow(newUnprefixedState, oldUnprefixedState)) return;
         listener(
           getUnprefixedObject(namespace.name, newState),
           getUnprefixedObject(namespace.name, oldState)
         );
       });
     },
+    namespaces: {},
+    // build the path to the namespace
+    namespacePath: [...(api.namespacePath ?? []), namespace],
   };
 
   return namespacedApi;
-}
-
-/**
- * Method used to get hooks for multiple namespaces.
- * @param store The store or namespace to get the hooks from (parent store)
- * @param namespaces The namespaces
- */
-export function getNamespaceHooks<
-  T extends object,
-  NewNamespaces extends readonly Namespace[],
-  CurrentNamespaces extends readonly Namespace[] = []
->(
-  store:
-    | UseBoundStore<StoreApi<T>>
-    | UseBoundNamespace<StoreApi<T>, CurrentNamespaces>,
-  ...namespaces: NewNamespaces
-): {
-  [K in keyof NewNamespaces]: UseBoundNamespace<
-    StoreApi<FilterByPrefix<NewNamespaces[K]['name'], T>>,
-    [...CurrentNamespaces, NewNamespaces[K]] // Track the current namespace chain
-  >;
-} {
-  return namespaces.map((namespace) =>
-    getOneNamespaceHook(store, namespace)
-  ) as any;
 }
 
 export function transformStateCreatorArgs<
@@ -109,7 +70,10 @@ export function transformStateCreatorArgs<
 ): Parameters<StateCreator<FilterByPrefix<N, State>>> {
   const [, , originalApi] = args;
 
-  const newApi = getNamespacedApi(namespace, originalApi);
+  const newApi = getNamespacedApi(
+    namespace,
+    originalApi as WithNames<StoreApi<State>>
+  );
 
   return [newApi.setState, newApi.getState, newApi];
 }
@@ -142,12 +106,9 @@ export function getUnprefixedObject<T extends string, Data extends object>(
 }
 
 /**
- * Method used to spread namespace data into a parent state.
- * @param namespaces The namespaces
- * @param callback A callback that returns the namespace data
- * @returns The combined namespace data
+ * This function will take a list of namespaces and a callback and return the spread data from the callback.
  */
-export function spreadNamespaces<Namespaces extends readonly Namespace[], Data>(
+function spreadNamespaces<Namespaces extends readonly Namespace[], Data>(
   namespaces: Namespaces,
   callback: (namespace: Namespaces[number]) => Data
 ) {
@@ -159,25 +120,63 @@ export function spreadNamespaces<Namespaces extends readonly Namespace[], Data>(
   }, {} as Data);
 }
 
+/**
+ * This function will take a callback and return a function that will apply the namespace to the api.
+ */
 function transformCallback<State extends object>(
   ...args: Parameters<StateCreator<State>>
 ) {
   return function <P extends string>(
     namespace: Namespace<FilterByPrefix<P, State>, P>
   ) {
-    const newArgs = transformStateCreatorArgs(namespace, ...args);
-    return getPrefixedObject(namespace.name, namespace.creator(...newArgs));
+    const originalApi = args[2] as WithNames<StoreApi<State>>;
+    const [set, get, api] = transformStateCreatorArgs(namespace, ...args);
+
+    // Add the namespace to the api
+    Object.assign(originalApi, {
+      namespaces: {
+        ...originalApi.namespaces,
+        [namespace.name]: api,
+      },
+    });
+    return getPrefixedObject(namespace.name, namespace.creator(set, get, api));
   };
 }
 
-function spreadTransformedNamespaces<
-  State extends object,
-  Namespaces extends readonly Namespace[]
+export function getNamespaceHooks<
+  S extends StoreApi<any> & { namespaces: any },
+  Namespaces extends readonly Namespace<any, string, any, any>[],
+  CurrentNamespaces extends readonly Namespace<any, string, any, any>[] = []
 >(
-  namespaces: Namespaces,
-  ...args: Parameters<StateCreator<State>>
-): IncludeByPrefix<Namespaces[number]['name'], State> {
-  return spreadNamespaces(namespaces, transformCallback(...args)) as any;
+  store: UseBoundStore<S> | UseBoundNamespace<S, CurrentNamespaces>,
+  ...namespaces: Namespaces
+) {
+  return namespaces.reduce(
+    (acc, namespace) => {
+      return {
+        ...acc,
+        [namespace.name]: getOneNamespaceHook(store, namespace),
+      };
+    },
+    {} as {
+      [NewNamespace in Namespaces[number] as NewNamespace extends Namespace<
+        any,
+        infer N,
+        any,
+        any
+      >
+        ? N extends string
+          ? N
+          : never
+        : never]: UseBoundNamespace<
+        NewNamespace['name'] extends keyof S['namespaces']
+          ? S['namespaces'][NewNamespace['name']] &
+              StoreApi<FilterByPrefix<NewNamespace['name'], ExtractState<S>>>
+          : never,
+        [...CurrentNamespaces, NewNamespace]
+      >;
+    }
+  );
 }
 
 function getOneNamespaceHook<
@@ -194,41 +193,37 @@ function getOneNamespaceHook<
     StoreApi<FilterByPrefix<Name, Store>>,
     [Namespace<FilterByPrefix<Name, Store>, Name>, ...Namespaces]
   >;
-  const namespaceApi = getNamespacedApi(namespace, useStore);
   const hook = ((selector) => {
     return useStore((state) => {
       return selector(toNamespace(state, namespace) as any);
     });
   }) as BoundStore;
 
-  let currentNamespaces: Array<Namespace> = (useStore as any).namespaces ?? [];
-  currentNamespaces = [...currentNamespaces, namespace];
+  const store = useStore as unknown as WithNames<StoreApi<Store>>;
+  const originalApi: WithNames<StoreApi<Store>> =
+    store.namespaces[namespace.name];
 
-  return Object.assign(hook, namespaceApi, {
+  if (!originalApi) throw new Error('Namespace not found');
+  return Object.assign(hook, originalApi, {
     getRawState: () => {
-      let currentState: any = namespaceApi.getState();
-      for (let i = currentNamespaces.length - 1; i >= 0; i--) {
-        currentState = getPrefixedObject(
-          currentNamespaces[i].name,
-          currentState
-        );
-      }
-      return currentState;
+      return fromNamespace(
+        originalApi.getState(),
+        ...(originalApi.namespacePath ?? [])
+      );
     },
-    namespaces: currentNamespaces,
   });
 }
 
 /**
  * Helper method for going from a state to a namespace.
  * @param state The state of the store
- * @param namespaces The namespace(s) to go to
+ * @param namespaces The namespace(s) to go to. If multiple namespaces are provided, the last namespace will be the one returned.
  * @returns The namespace state
  */
-export function toNamespace<State, Namespaces extends readonly Namespace[]>(
-  state: State,
-  ...namespaces: Namespaces
-): NamespacedState<State, Namespaces> {
+export function toNamespace<
+  State,
+  Namespaces extends readonly Namespace<any, string, any, any>[]
+>(state: State, ...namespaces: Namespaces): NamespacedState<State, Namespaces> {
   let current: any = state;
   for (let i = 0; i < namespaces.length; i++) {
     current = getUnprefixedObject(namespaces[i].name, current);
@@ -239,24 +234,13 @@ export function toNamespace<State, Namespaces extends readonly Namespace[]>(
 /**
  * Helper method for going to a state from a namespace.
  *  * @param state The state of the store
- * @param namespaces The namespace(s) come from
+ * @param namespaces The namespace(s) to come from.
  * @returns The namespace state
- * @example
- * const state = {
- *  data: 'hi',
- * };
- * const subNamespace = createNamespace(() => ({
- * name: 'subNamespace',
- * creator: ...
- * }));
- * const namespace = createNamespace(() => ({
- * name: 'namespace',
- * creator: ...
- * }));
- * const data = fromNamespace(state, namespace, subNamespace);
- * // data = { subNamespace_namespace_data: 'hi' }
  */
-export function fromNamespace<State, Namespaces extends readonly Namespace[]>(
+export function fromNamespace<
+  State,
+  Namespaces extends readonly Namespace<any, string, any, any>[]
+>(
   state: State,
   ...namespaces: Namespaces
 ): UnNamespacedState<State, Namespaces> {
@@ -267,115 +251,142 @@ export function fromNamespace<State, Namespaces extends readonly Namespace[]>(
   return current;
 }
 
-type CreateNamespace = {
-  <Name extends string, Data, Options>(
-    callback: () => Namespace<Data, Name, Options>
-  ): Namespace<Data, Name, Options>;
-  <T, Options = unknown>(): <Name extends string>(
-    callback: () => Namespace<T, Name, Options>
-  ) => Namespace<T, Name, Options>;
-};
-
-/**
- * Helper method for creating a namespace.
- * @param callback A callback that returns a namespace
- * @returns A function that returns a namespace
- */
-export const createNamespace: CreateNamespace = ((callback?: any) => {
-  if (callback) {
-    // The first overload implementation
-    return callback();
-  } else {
-    // The second overload implementation
-    return <Prefix extends string, Data, Options>(
-      callback: () => Namespace<Data, Prefix, Options>
-    ) => {
-      return callback();
+export const createNamespace = ((one?: any, two?: any) => {
+  if (one && two) {
+    return {
+      name: one,
+      creator: two,
     };
+  } else {
+    return (name: any, creator: any) => ({
+      name,
+      creator,
+    });
   }
 }) as CreateNamespace;
 
 /**
- * Helper method for partializing a namespace. This method is often used in 3rd party libraries to create a partialized version of a store.
- * @param state The state of the store
- * @param getPartializeFn A function that returns a partialized version of the namespace
- * @returns A function that returns a partialized version of the namespace
+ * This is where the fun middleware stuff happens.
+ * We override the setState method with a method that will go through its namespaced children. We add
+ * a payload to the api object so that the children can access it. Each of the apis that was passed to the namespaced children
+ * will have will have their setState method apply its state to the payload. If a child has a payload, we skip it because
+ * its payload has already been applied. We then apply the payload to the state and call the original setState method. This
+ * works with nested namespaces as well. This has the benefit of the state only being updated ONCE.
  */
-export function partializeNamespace<
-  P extends string,
-  State extends object,
-  Options
->(
-  state: State,
-  getPartializeFn: (
-    namespace: Namespace<FilterByPrefix<P, State>, P, Options>
-  ) =>
-    | ((state: FilterByPrefix<P, State>) => Partial<FilterByPrefix<P, State>>)
-    | undefined
-) {
-  return (namespace: Namespace<FilterByPrefix<P, State>, P, Options>) => {
-    const namespaceData: any = toNamespace(state, namespace);
-    const partializedData = getPartializeFn(namespace)?.(namespaceData);
-    return fromNamespace(partializedData ?? {}, namespace);
+function getRootApi<Store extends object>(
+  api: WithNames<StoreApi<Store>>
+): WithNames<StoreApi<Store>> {
+  const originalSet = api.setState;
+  const setState: StoreApi<Store>['setState'] = (state) => {
+    api._payload = {};
+
+    const currentState = api.getState();
+
+    let newState = typeof state === 'function' ? state(currentState) : state;
+
+    newState = { ...newState };
+
+    /**
+     * This function will go through all the namespaces and apply their state to the payload.
+     * It will then remove the keys from the newState that were applied to the payload.
+     * @param newState The new state
+     * @param namespaces The namespaces to apply the state to
+     */
+    function callSetOnNamespaces(
+      newState: any,
+      namespaces: Record<string, WithNames<StoreApi<any>>>
+    ) {
+      for (const name in namespaces) {
+        // break if there are not more keys to apply
+        if (Object.keys(newState).length === 0) break;
+        const namespaceApi = namespaces[name];
+        // Skip if the namespace has already been applied
+        if (namespaceApi._payload) continue;
+
+        // Get the state to apply to the namespace
+        const namespaceState = toNamespace(
+          newState,
+          ...(namespaceApi?.namespacePath ?? [])
+        );
+        // if there are no keys to call setState with, continue
+        if (Object.keys(namespaceState).length === 0) continue;
+        namespaceApi.setState(namespaceState);
+
+        // Get the keys that were applied to the namespace
+        const originalState = fromNamespace(
+          namespaceState,
+          ...(namespaceApi.namespacePath ?? [])
+        );
+
+        // remove the keys that were applied to the namespace
+        for (const key in originalState) {
+          delete newState[key];
+        }
+      }
+    }
+
+    // Build the payload from the namespaces
+    callSetOnNamespaces(newState, api.namespaces);
+
+    const payload = api._payload;
+
+    // merge the remaining keys that were not applied to the namespaces and the payload from the namespaces
+    originalSet({
+      ...newState,
+      ...payload,
+    });
+    // remove the payload so that it is not applied again
+    delete api._payload;
   };
+
+  return Object.assign(api, {
+    setState,
+  });
 }
 
-/**
- * Helper method for partializing a namespace. This method is often used in 3rd party libraries to create a partialized version of a store.
- * @param state The state of the store
- * @param namespaces The namespaces of the store
- * @param getPartializeFn A function that returns a partialized version of the namespace
- * @returns A function that returns a partialized version of the namespace
- */
-export function partializeNamespaces<
-  State extends object,
-  Namespaces extends readonly Namespace[],
-  Fn extends <D extends Namespaces[number]>(
-    namespace: D
-  ) => ((state: any) => any) | undefined
->(state: State, namespaces: Namespaces, getPartializeFn: Fn) {
-  return spreadNamespaces(
-    namespaces,
-    partializeNamespace(state, getPartializeFn)
-  );
-}
+export const namespaced = ((one?: any, two?: any) => {
+  if (!two) {
+    const { namespaces } = one;
+    return (
+      _: StoreApi<any>['setState'],
+      __: StoreApi<any>['getState'],
+      api: StoreApi<any>
+    ) => {
+      const apiWithNamespaces = Object.assign(api, {
+        namespaces: {},
+      });
 
-declare module 'zustand/vanilla' {
-  // eslint-disable-next-line
-  interface StoreMutators<S, A> {
-    'zustand-namespaces': S;
-  }
-}
-
-export function namespaced<Namespaces extends readonly Namespace[]>(
-  ...namespaces: Namespaces
-): <
-  T,
-  Excluded extends ExcludeByPrefix<Namespaces[number]['name'], T>,
-  Result extends Excluded & ExtractNamespaces<Namespaces>,
-  Mps extends [StoreMutatorIdentifier, unknown][] = [],
-  Mcs extends [StoreMutatorIdentifier, unknown][] = []
->(
-  creator?: StateCreator<
-    Result,
-    [...Mps, ['zustand-namespaces', unknown]],
-    Mcs,
-    Excluded
-  >
-) => StateCreator<
-  Result,
-  Mps,
-  [['zustand-namespaces', unknown], ...Mcs],
-  Result
-> {
-  // @ts-expect-error  // eslint-disable-next-line
-  return (creator) => {
-    return (...args) => {
+      const rootApi = getRootApi(apiWithNamespaces);
       return {
-        ...spreadTransformedNamespaces(namespaces, ...args),
-        // @ts-expect-error // eslint-disable-next-line
-        ...creator?.(...args),
+        ...spreadNamespaces(
+          namespaces,
+          transformCallback(rootApi.setState, rootApi.getState, rootApi)
+        ),
       };
     };
-  };
-}
+  } else {
+    const callback = one as (state: any) => StateCreator<any>;
+    const { namespaces } = two as {
+      namespaces: Namespace<any, string, any, any>[];
+    };
+    return (
+      _: StoreApi<any>['setState'],
+      __: StoreApi<any>['getState'],
+      api: StoreApi<any>
+    ) => {
+      const apiWithNamespaces = Object.assign(api, {
+        namespaces: {},
+      });
+
+      const rootApi = getRootApi(apiWithNamespaces);
+      return {
+        ...callback(
+          spreadNamespaces(
+            namespaces,
+            transformCallback(rootApi.setState, rootApi.getState, rootApi)
+          )
+        )(rootApi.setState, rootApi.getState, rootApi),
+      };
+    };
+  }
+}) as Namespaced;
