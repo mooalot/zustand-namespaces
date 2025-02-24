@@ -281,8 +281,9 @@ function getRootApi<Store extends object>(
     api._payload = {};
 
     originalSet((currentState) => {
-      const newState =
-        typeof state === 'function' ? state(currentState) : state;
+      let newState = typeof state === 'function' ? state(currentState) : state;
+
+      newState = { ...newState };
 
       /**
        * This function will go through all the namespaces and apply their state to the payload.

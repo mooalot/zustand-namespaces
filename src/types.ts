@@ -128,10 +128,7 @@ export type MergeMs<
 > = Ms extends [[infer M, infer A], ...infer Rest]
   ? Rest extends [StoreMutatorIdentifier, unknown][]
     ? M extends keyof StoreMutators<S, A>
-      ? Omit<
-          MergeMs<S, Rest, Current & StoreMutators<S, A>[M]>,
-          keyof StoreApi<any>
-        >
+      ? MergeMs<S, Rest, Current & StoreMutators<S, A>[M]>
       : Current
     : Current
   : Current;
@@ -147,7 +144,7 @@ export type WithNamespaces<S, A> = A extends Namespace<any, string, any, any>[]
               ? N
               : never
             : never]: NS extends Namespace<infer T, any, any, infer Mcs>
-            ? MergeMs<S, Mcs> & StoreApi<T>
+            ? MergeMs<StoreApi<T>, Mcs>
             : // eslint-disable-next-line
               {};
         };

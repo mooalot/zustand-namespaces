@@ -10,6 +10,8 @@ import {
   namespaced,
   toNamespace,
 } from '../src/utils';
+import { produce } from 'immer';
+import { immer } from 'zustand/middleware/immer';
 
 describe('Utility Functions', () => {
   describe('getPrefixedObject', () => {
@@ -146,6 +148,54 @@ describe('Utility Functions', () => {
     });
     expect(result2).toEqual({
       namespace_subNamespace_key: 'value',
+    });
+  });
+
+  it('should be able to modify api methods with middleware', () => {
+    const subNamespace = createNamespace('subNamespace', () => ({
+      key: 'value',
+    }));
+    const namespace = createNamespace(
+      'namespace',
+      namespaced((state) => immer(() => ({ key: 'value', ...state })), {
+        namespaces: [subNamespace],
+      })
+    );
+
+    const useStore = create(
+      namespaced((state) => immer(() => ({ key: 'value', ...state })), {
+        namespaces: [namespace],
+      })
+    );
+
+    useStore.setState((state) => {
+      state.namespace_key = 'updated';
+    });
+
+    const { namespace: useNamespaceStore } = getNamespaceHooks(
+      useStore,
+      namespace
+    );
+    const { subNamespace: useSubNamespaceStore } = getNamespaceHooks(
+      useNamespaceStore,
+      subNamespace
+    );
+
+    useNamespaceStore.setState((state) =>
+      produce(state, (draft) => {
+        draft.key = 'updated';
+      })
+    );
+
+    useSubNamespaceStore.setState((state) =>
+      produce(state, (draft) => {
+        draft.key = 'updated';
+      })
+    );
+
+    expect(useNamespaceStore.getRawState()).toEqual({
+      namespace_key: 'updated',
+      namespace_subNamespace_key: 'updated',
     });
   });
 });
