@@ -1,6 +1,10 @@
 import { create } from 'zustand';
-import { createNamespace, getNamespaceHooks, namespaced } from '../src/utils';
-import { ExtractNamespaces } from '../src/types';
+import {
+  ExtractNamespaces,
+  createNamespace,
+  getNamespaceHooks,
+  namespaced,
+} from 'zustand-namespaces';
 
 type Namespace1 = {
   dataInNamespace1: string;
