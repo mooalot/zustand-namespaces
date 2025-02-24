@@ -26,8 +26,12 @@ function createStores() {
   const useStore = create(namespaced({ namespaces: [namespace] }));
 
   const { namespace: useNamespace } = getNamespaceHooks(useStore, namespace);
+  const { subNamespace: useSubNamespace } = getNamespaceHooks(
+    useNamespace,
+    subNamespace
+  );
 
-  return { useStore, useNamespace };
+  return { useStore, useNamespace, useSubNamespace };
 }
 
 // Clean up after each test
@@ -46,18 +50,26 @@ describe('Zustand Namespace Stores', () => {
     expect(useNamespace.namespacePath).toHaveLength(1);
   });
 
-  test('set should be called once for namespace', () => {
-    const { useStore, useNamespace } = createStores();
+  test('set should be called once for each namespace', () => {
+    const { useNamespace, useSubNamespace } = createStores();
 
     const logSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
 
     act(() => {
-      useNamespace.setState({ data: 'Updated Namespace Data' });
+      useNamespace.setState({
+        data: 'Updated Namespace Data',
+      });
     });
 
     // check that its only been called with the setState_
     expect(logSpy).toHaveBeenCalledTimes(1);
     expect(logSpy).toHaveBeenCalledWith('test: setState_namespace');
-    logSpy.mockRestore();
+
+    act(() => {
+      useSubNamespace.setState({ data: 'Updated again Namespace Data' });
+    });
+
+    expect(logSpy).toHaveBeenCalledTimes(3);
+    expect(logSpy).toHaveBeenCalledWith('test: setState_subNamespace');
   });
 });

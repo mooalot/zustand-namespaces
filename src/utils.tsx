@@ -1,17 +1,7 @@
-import {
-  ExtractState,
-  StateCreator,
-  StoreApi,
-  StoreMutatorIdentifier,
-  StoreMutators,
-  UseBoundStore,
-} from 'zustand';
+import { ExtractState, StateCreator, StoreApi, UseBoundStore } from 'zustand';
 import {
   CreateNamespace,
-  ExcludeByPrefix,
-  ExtractNamespaces,
   FilterByPrefix,
-  IncludeByPrefix,
   Namespace,
   Namespaced,
   NamespacedState,
@@ -21,6 +11,11 @@ import {
   WithNames,
 } from './types';
 
+/**
+ * This function will take a namespace and an api and return a new api that is namespaced.
+ * @param namespace The namespace to apply
+ * @param api The api to apply the namespace to
+ */
 function getNamespacedApi<T extends object, Name extends string>(
   namespace: Namespace<FilterByPrefix<Name, T>, Name>,
   api: WithNames<StoreApi<T>>
@@ -33,7 +28,9 @@ function getNamespacedApi<T extends object, Name extends string>(
       return getUnprefixedObject(namespace.name, api.getState());
     },
     setState: (state) => {
-      // log is used for testing purposes
+      /**
+       * Log is used for testing purposes. Specifically to test that the setState method is only called once per setState call.
+       */
       console.debug(`test: setState_${namespace.name}`);
       const currentState = api.getState();
       const unprefixedState = getUnprefixedObject(namespace.name, currentState);
@@ -57,8 +54,8 @@ function getNamespacedApi<T extends object, Name extends string>(
       });
     },
     namespaces: {},
+    // build the path to the namespace
     namespacePath: [...(api.namespacePath ?? []), namespace],
-    parentApi: api,
   };
 
   return namespacedApi;
@@ -108,6 +105,9 @@ export function getUnprefixedObject<T extends string, Data extends object>(
   }, {} as FilterByPrefix<T, Data>);
 }
 
+/**
+ * This function will take a list of namespaces and a callback and return the spread data from the callback.
+ */
 function spreadNamespaces<Namespaces extends readonly Namespace[], Data>(
   namespaces: Namespaces,
   callback: (namespace: Namespaces[number]) => Data
@@ -120,6 +120,9 @@ function spreadNamespaces<Namespaces extends readonly Namespace[], Data>(
   }, {} as Data);
 }
 
+/**
+ * This function will take a callback and return a function that will apply the namespace to the api.
+ */
 function transformCallback<State extends object>(
   ...args: Parameters<StateCreator<State>>
 ) {
@@ -128,6 +131,8 @@ function transformCallback<State extends object>(
   ) {
     const originalApi = args[2] as WithNames<StoreApi<State>>;
     const [set, get, api] = transformStateCreatorArgs(namespace, ...args);
+
+    // Add the namespace to the api
     Object.assign(originalApi, {
       namespaces: {
         ...originalApi.namespaces,
@@ -136,16 +141,6 @@ function transformCallback<State extends object>(
     });
     return getPrefixedObject(namespace.name, namespace.creator(set, get, api));
   };
-}
-
-function spreadTransformedNamespaces<
-  State extends object,
-  Namespaces extends readonly Namespace[]
->(
-  namespaces: Namespaces,
-  ...args: Parameters<StateCreator<State>>
-): IncludeByPrefix<Namespaces[number]['name'], State> {
-  return spreadNamespaces(namespaces, transformCallback(...args)) as any;
 }
 
 export function getNamespaceHooks<
@@ -179,7 +174,7 @@ export function getNamespaceHooks<
               StoreApi<FilterByPrefix<NewNamespace['name'], ExtractState<S>>>
           : never,
         [...CurrentNamespaces, NewNamespace]
-      >; // Track the current namespace chain
+      >;
     }
   );
 }
@@ -270,57 +265,77 @@ export const createNamespace = ((one?: any, two?: any) => {
   }
 }) as CreateNamespace;
 
+/**
+ * This is where the fun middleware stuff happens.
+ * We override the setState method with a method that will go through its namespaced children. We add
+ * a payload to the api object so that the children can access it. Each of the apis that was passed to the namespaced children
+ * will have will have their setState method apply its state to the payload. If a child has a payload, we skip it because
+ * its payload has already been applied. We then apply the payload to the state and call the original setState method. This
+ * works with nested namespaces as well. This has the benefit of the state only being updated ONCE.
+ */
 function getRootApi<Store extends object>(
   api: WithNames<StoreApi<Store>>
 ): WithNames<StoreApi<Store>> {
   const originalSet = api.setState;
   const setState: StoreApi<Store>['setState'] = (state) => {
-    // console.log('api stop', api.stop, api.namespacePath);
-    // if (api.stop) {
-    //   console.log('deleting stop');
-    //   delete api.stop;
-    //   return originalSet(state);
-    // }
-    // if (api.parentApi) {
-    //   console.log('setting stop to true');
-    //   api.parentApi.stop = true;
-    // }
-    return originalSet((currentState) => {
-      api._payload = {};
+    api._payload = {};
+
+    originalSet((currentState) => {
       const newState =
         typeof state === 'function' ? state(currentState) : state;
+
+      /**
+       * This function will go through all the namespaces and apply their state to the payload.
+       * It will then remove the keys from the newState that were applied to the payload.
+       * @param newState The new state
+       * @param namespaces The namespaces to apply the state to
+       */
       function callSetOnNamespaces(
         newState: any,
         namespaces: Record<string, WithNames<StoreApi<any>>>
       ) {
-        for (const namespace in namespaces) {
+        for (const name in namespaces) {
+          // break if there are not more keys to apply
           if (Object.keys(newState).length === 0) break;
-          const namespaceApi = namespaces[namespace];
+          const namespaceApi = namespaces[name];
+          // Skip if the namespace has already been applied
+          if (namespaceApi._payload) continue;
+
+          // Get the state to apply to the namespace
           const namespaceState = toNamespace(
             newState,
             ...(namespaceApi?.namespacePath ?? [])
           );
-          if (Object.keys(namespaceState).length > 0)
-            namespaceApi.setState(namespaceState);
+          // if there are no keys to call setState with, continue
+          if (Object.keys(namespaceState).length === 0) continue;
+          namespaceApi.setState(namespaceState);
+
+          // Get the keys that were applied to the namespace
           const originalState = fromNamespace(
             namespaceState,
             ...(namespaceApi.namespacePath ?? [])
           );
+
+          // remove the keys that were applied to the namespace
           for (const key in originalState) {
             delete newState[key];
           }
         }
       }
+
+      // Build the payload from the namespaces
       callSetOnNamespaces(newState, api.namespaces);
 
       const payload = api._payload;
-      console.log('payload', payload);
-      delete api._payload;
+
+      // merge the remaining keys that were not applied to the namespaces and the payload from the namespaces
       return {
         ...newState,
         ...payload,
       };
     });
+    // remove the payload so that it is not applied again
+    delete api._payload;
   };
 
   return Object.assign(api, {
@@ -332,8 +347,8 @@ export const namespaced = ((one?: any, two?: any) => {
   if (!two) {
     const { namespaces } = one;
     return (
-      set: StoreApi<any>['setState'],
-      get: StoreApi<any>['getState'],
+      _: StoreApi<any>['setState'],
+      __: StoreApi<any>['getState'],
       api: StoreApi<any>
     ) => {
       const apiWithNamespaces = Object.assign(api, {
@@ -342,11 +357,9 @@ export const namespaced = ((one?: any, two?: any) => {
 
       const rootApi = getRootApi(apiWithNamespaces);
       return {
-        ...spreadTransformedNamespaces(
+        ...spreadNamespaces(
           namespaces,
-          rootApi.setState,
-          rootApi.getState,
-          rootApi
+          transformCallback(rootApi.setState, rootApi.getState, rootApi)
         ),
       };
     };
@@ -356,8 +369,8 @@ export const namespaced = ((one?: any, two?: any) => {
       namespaces: Namespace<any, string, any, any>[];
     };
     return (
-      set: StoreApi<any>['setState'],
-      get: StoreApi<any>['getState'],
+      _: StoreApi<any>['setState'],
+      __: StoreApi<any>['getState'],
       api: StoreApi<any>
     ) => {
       const apiWithNamespaces = Object.assign(api, {
@@ -367,11 +380,9 @@ export const namespaced = ((one?: any, two?: any) => {
       const rootApi = getRootApi(apiWithNamespaces);
       return {
         ...callback(
-          spreadTransformedNamespaces(
+          spreadNamespaces(
             namespaces,
-            rootApi.setState,
-            rootApi.getState,
-            rootApi
+            transformCallback(rootApi.setState, rootApi.getState, rootApi)
           )
         )(rootApi.setState, rootApi.getState, rootApi),
       };

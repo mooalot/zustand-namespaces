@@ -17,8 +17,6 @@ export type WithNames<T> = T & {
   namespaces: any;
   namespacePath?: Namespace[];
   _payload?: any;
-  stop?: boolean;
-  parentApi?: any;
 };
 
 export type ExtractNamespace<T> = ExtractNamespaceType<T>;

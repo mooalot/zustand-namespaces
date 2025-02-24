@@ -137,7 +137,6 @@ describe('Zustand Namespaces with Components', () => {
         .getState()
         .clear();
       useStore.namespaces.namespace1.namespaces.subNamespace.persist.clearStorage();
-      console.log('reset', useStore.stop);
     });
   };
   beforeEach(resetStore);
@@ -244,16 +243,11 @@ describe('Zustand Namespaces with Components', () => {
   });
 
   test('should be able to update data from namespace1 from root store and undo it from namespace1', () => {
-    console.log('start');
     render(<App />);
-    const temporalState = useStore.namespaces.namespace1.temporal;
-
-    console.log('before', temporalState.getState().pastStates);
     act(() => {
       useStore.setState({ namespace1_data: 'New Namespace1 Data' });
     });
 
-    console.log('after', temporalState.getState().pastStates);
     expect(screen.getByTestId('namespace1-data')).toHaveTextContent(
       'New Namespace1 Data'
     );
