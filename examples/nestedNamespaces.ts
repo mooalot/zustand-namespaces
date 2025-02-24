@@ -1,5 +1,9 @@
 import { create } from 'zustand';
-import { namespaced, createNamespace, getNamespaceHooks } from '../src/utils';
+import {
+  namespaced,
+  createNamespace,
+  getNamespaceHooks,
+} from 'zustand-namespaces';
 
 const subNamespace = createNamespace('subNamespace', () => ({
   dataInSubNamespace: 'data',

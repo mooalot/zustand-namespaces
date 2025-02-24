@@ -1,8 +1,13 @@
 import { temporal } from 'zundo';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { ExtractNamespace, ExtractNamespaces } from '../src/types';
-import { createNamespace, getNamespaceHooks, namespaced } from '../src/utils';
+import {
+  createNamespace,
+  getNamespaceHooks,
+  namespaced,
+  ExtractNamespace,
+  ExtractNamespaces,
+} from 'zustand-namespaces';
 
 type SubNamespace = {
   data: string;
