@@ -128,11 +128,13 @@ describe('Zustand Namespace Stores', () => {
 // Tests
 describe('Zustand Namespaces with Components', () => {
   const resetStore = () => {
-    useStore.setState({
-      namespace1_dataInNamespace1: 'Initial Namespace1 Data',
-      namespace2_dataInNamespace2: 'Initial Namespace2 Data',
-      namespace1_subNamespace1_dataInSubNamespace1:
-        'Initial SubNamespace1 Data',
+    act(() => {
+      useStore.setState({
+        namespace1_dataInNamespace1: 'Initial Namespace1 Data',
+        namespace2_dataInNamespace2: 'Initial Namespace2 Data',
+        namespace1_subNamespace1_dataInSubNamespace1:
+          'Initial SubNamespace1 Data',
+      });
     });
   };
   afterEach(resetStore);
