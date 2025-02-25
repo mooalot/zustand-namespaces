@@ -200,4 +200,35 @@ describe('Utility Functions', () => {
       namespace_subNamespace_key: 'updated',
     });
   });
+
+  it('should replace state', () => {
+    const namespace = createNamespace('namespace', () => ({
+      key: 'value',
+      key2: 'value2',
+    }));
+
+    const useStore = create(
+      namespaced((state) => () => ({ key: 'value', ...state }), {
+        namespaces: [namespace],
+      })
+    );
+
+    const { namespace: useNamespaceStore } = getNamespaceHooks(
+      useStore,
+      namespace
+    );
+
+    //@ts-expect-error
+    useNamespaceStore.setState({ key: 'updated' }, true);
+    expect(useNamespaceStore.getRawState()).toEqual({
+      namespace_key: 'updated',
+    });
+    expect(useNamespaceStore.getState()).toEqual({
+      key: 'updated',
+    });
+    expect(useStore.getState()).toEqual({
+      namespace_key: 'updated',
+      key: 'value',
+    });
+  });
 });

@@ -27,7 +27,8 @@ function getNamespacedApi<T extends object, Name extends string>(
     getState: () => {
       return getUnprefixedObject(namespace.name, api.getState());
     },
-    setState: (state) => {
+    setState: (state, replace) => {
+      namespacedApi._payload = {}; //payload isnt used, but stops namespaces from being traveresd too many times
       /**
        * Log is used for testing purposes. Specifically to test that the setState method is only called once per setState call.
        */
@@ -43,7 +44,22 @@ function getNamespacedApi<T extends object, Name extends string>(
           ...api._payload,
           ...newState,
         };
-      } else api.setState(newState as T);
+      } else {
+        if (replace) {
+          const replaceState = { ...currentState };
+          const specificToNamespace = getPrefixedObject(
+            namespace.name,
+            unprefixedState
+          );
+          for (const key in specificToNamespace) {
+            delete replaceState[key];
+          }
+          api.setState({ ...replaceState, ...newState } as T, replace as any);
+        } else {
+          api.setState(newState as T);
+        }
+      }
+      delete namespacedApi._payload;
     },
     subscribe: (listener) => {
       return api.subscribe((newState, oldState) => {
@@ -80,8 +96,9 @@ export function transformStateCreatorArgs<
 
 export function getPrefixedObject<T extends string, O extends object>(
   typePrefix: T,
-  obj: O
+  obj: O | undefined
 ) {
+  if (!obj) return undefined as unknown as PrefixObject<T, O>;
   return Object.entries(obj).reduce((acc, [key, value]) => {
     return {
       ...acc,
@@ -92,8 +109,9 @@ export function getPrefixedObject<T extends string, O extends object>(
 
 export function getUnprefixedObject<T extends string, Data extends object>(
   typePrefix: T,
-  obj: Data
-) {
+  obj: Data | undefined
+): FilterByPrefix<T, Data> {
+  if (!obj) return undefined as unknown as FilterByPrefix<T, Data>;
   return Object.entries(obj).reduce((acc, [key, value]) => {
     if (key.startsWith(`${typePrefix}_`)) {
       return {
@@ -139,6 +157,7 @@ function transformCallback<State extends object>(
         [namespace.name]: api,
       },
     });
+
     return getPrefixedObject(namespace.name, namespace.creator(set, get, api));
   };
 }
@@ -277,7 +296,7 @@ function getRootApi<Store extends object>(
   api: WithNames<StoreApi<Store>>
 ): WithNames<StoreApi<Store>> {
   const originalSet = api.setState;
-  const setState: StoreApi<Store>['setState'] = (state) => {
+  const setState: StoreApi<Store>['setState'] = (state, replace) => {
     api._payload = {};
 
     const currentState = api.getState();
@@ -331,10 +350,13 @@ function getRootApi<Store extends object>(
     const payload = api._payload;
 
     // merge the remaining keys that were not applied to the namespaces and the payload from the namespaces
-    originalSet({
-      ...newState,
-      ...payload,
-    });
+    originalSet(
+      {
+        ...newState,
+        ...payload,
+      },
+      replace as any
+    );
     // remove the payload so that it is not applied again
     delete api._payload;
   };
@@ -357,12 +379,14 @@ export const namespaced = ((one?: any, two?: any) => {
       });
 
       const rootApi = getRootApi(apiWithNamespaces);
-      return {
+
+      const data = {
         ...spreadNamespaces(
           namespaces,
           transformCallback(rootApi.setState, rootApi.getState, rootApi)
         ),
       };
+      return data;
     };
   } else {
     const callback = one as (state: any) => StateCreator<any>;
