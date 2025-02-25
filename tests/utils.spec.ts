@@ -218,7 +218,7 @@ describe('Utility Functions', () => {
       namespace
     );
 
-    //@ts-expect-error
+    //@ts-expect-error - setState with replace only accepts the whole state, but we are passing a partial state
     useNamespaceStore.setState({ key: 'updated' }, true);
     expect(useNamespaceStore.getRawState()).toEqual({
       namespace_key: 'updated',
