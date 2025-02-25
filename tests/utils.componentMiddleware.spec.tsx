@@ -10,13 +10,13 @@ import { createNamespace, namespaced, getNamespaceHooks } from '../src/utils';
 const storage: { [key: string]: string } = {};
 
 const storageImplementation: StateStorage = {
-  getItem: async (name) => {
+  getItem: (name) => {
     return storage[name];
   },
-  setItem: async (name, value) => {
+  setItem: (name, value) => {
     storage[name] = value;
   },
-  removeItem: async (name) => {
+  removeItem: (name) => {
     delete storage[name];
   },
 };
@@ -286,71 +286,71 @@ describe('Zustand Namespaces with Components', () => {
     );
   });
 
-  // test('should be able to store data with persist and create a new store with that same data if it uses the same name', () => {
-  //   let namespace = createNamespace<{
-  //     data: string;
-  //   }>()(
-  //     'namespace',
-  //     persist(
-  //       () => ({
-  //         data: 'hi',
-  //       }),
-  //       {
-  //         name: 'namespace',
-  //         storage: createJSONStorage(() => storageImplementation),
-  //       }
-  //     )
-  //   );
-  //   let store = create(
-  //     namespaced({
-  //       namespaces: [namespace],
-  //     })
-  //   );
+  test('should be able to store data with persist and create a new store with that same data if it uses the same name', () => {
+    let namespace = createNamespace<{
+      data: string;
+    }>()(
+      'namespace',
+      persist(
+        () => ({
+          data: 'hi',
+        }),
+        {
+          name: 'namespace',
+          storage: createJSONStorage(() => storageImplementation),
+        }
+      )
+    );
+    let store = create(
+      namespaced({
+        namespaces: [namespace],
+      })
+    );
 
-  //   let { namespace: useNamespace } = getNamespaceHooks(store, namespace);
+    let { namespace: useNamespace } = getNamespaceHooks(store, namespace);
 
-  //   // set data in namespace
-  //   act(() => {
-  //     useNamespace.setState({ data: 'New Namespace Data' });
-  //   });
+    // set data in namespace
+    act(() => {
+      useNamespace.setState({ data: 'New Namespace Data' });
+    });
 
-  //   // check t omake sure the data is set in storage
-  //   expect(JSON.parse(storage['namespace'])).toEqual({
-  //     state: { data: 'New Namespace Data' },
-  //     version: 0,
-  //   });
+    // check t omake sure the data is set in storage
+    expect(JSON.parse(storage['namespace'])).toEqual({
+      state: { data: 'New Namespace Data' },
+      version: 0,
+    });
 
-  //   namespace = createNamespace<{
-  //     data: string;
-  //   }>()(
-  //     'namespace',
-  //     persist(
-  //       () => ({
-  //         data: 'hi',
-  //       }),
-  //       {
-  //         name: 'namespace',
-  //         storage: createJSONStorage(() => storageImplementation),
-  //       }
-  //     )
-  //   );
-  //   // create a new store with the same namespace name
-  //   store = create(
-  //     namespaced({
-  //       namespaces: [namespace],
-  //     })
-  //   );
+    namespace = createNamespace<{
+      data: string;
+    }>()(
+      'namespace',
+      persist(
+        () => ({
+          data: 'hi',
+        }),
+        {
+          name: 'namespace',
+          storage: createJSONStorage(() => storageImplementation),
+        }
+      )
+    );
+    // create a new store with the same namespace name
+    store = create(
+      namespaced({
+        namespaces: [namespace],
+      })
+    );
 
-  //   // check to make sure the data is still there
-  //   expect(JSON.parse(storage['namespace'])).toEqual({
-  //     state: { data: 'New Namespace Data' },
-  //     version: 0,
-  //   });
+    // check to make sure the data is still there
+    expect(JSON.parse(storage['namespace'])).toEqual({
+      state: { data: 'New Namespace Data' },
+      version: 0,
+    });
 
-  //   // get the hook for the new store
-  //   ({ namespace: useNamespace } = getNamespaceHooks(store, namespace));
+    // get the hook for the new store
+    ({ namespace: useNamespace } = getNamespaceHooks(store, namespace));
 
-  //   // check to make sure the data is still there
-  //   expect(useNamespace.getState().data).toBe('New Namespace Data');
-  // });
+    // check to make sure the data is still there
+    expect(useNamespace.getState().data).toBe('New Namespace Data');
+  });
 });
