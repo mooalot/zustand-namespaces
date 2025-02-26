@@ -28,15 +28,15 @@ const useStore = create(
 export const { namespaceA: useNamespaceA, namespaceB: useNamespaceB } =
   getNamespaceHooks(useStore, namespaceA, namespaceB);
 
-// useStore((state) => state.namespaceA_dataInNamespaceA);
-// useStore((state) => state.namespaceB_dataInNamespaceB);
-// useStore((state) => state.mainData);
-// useStore.getState;
-// useStore.setState;
+useStore((state) => state.namespaceA.dataInNamespaceA);
+useStore((state) => state.namespaceB.dataInNamespaceB);
+useStore((state) => state.mainData);
+useStore.getState;
+useStore.setState;
 
-// useNamespaceA((state) => state.dataInNamespaceA);
-// useNamespaceA.getState;
-// useNamespaceA.setState;
-// useNamespaceB((state) => state.dataInNamespaceB);
-// useNamespaceB.getState;
-// useNamespaceB.setState;
+useNamespaceA((state) => state.dataInNamespaceA);
+useNamespaceA.getState;
+useNamespaceA.setState;
+useNamespaceB((state) => state.dataInNamespaceB);
+useNamespaceB.getState;
+useNamespaceB.setState;

@@ -35,14 +35,14 @@ const useStore = create<AppState>()(
 export const { namespace1: useNamespace1, namespace2: useNamespace2 } =
   getNamespaceHooks(useStore, namespace1, namespace2);
 
-// useStore((state) => state.namespace1_dataInNamespace1);
-// useStore((state) => state.namespace2_dataInNamespace2);
-// useStore.getState;
-// useStore.setState;
+useStore((state) => state.namespace1.dataInNamespace1);
+useStore((state) => state.namespace2.dataInNamespace2);
+useStore.getState;
+useStore.setState;
 
-// useNamespace1((state) => state.dataInNamespace1);
-// useNamespace1.getState;
-// useNamespace1.setState;
-// useNamespace2((state) => state.dataInNamespace2);
-// useNamespace2.getState;
-// useNamespace2.setState;
+useNamespace1((state) => state.dataInNamespace1);
+useNamespace1.getState;
+useNamespace1.setState;
+useNamespace2((state) => state.dataInNamespace2);
+useNamespace2.getState;
+useNamespace2.setState;

@@ -22,7 +22,10 @@ const s1 = createNamespace<SubNamespace>()(
       }),
       { name: 'namespace' }
     )
-  )
+  ),
+  {
+    flatten: true,
+  }
 );
 
 type Namespace1 = ExtractNamespace<typeof s1> & {
@@ -39,7 +42,7 @@ const n1 = createNamespace<Namespace1>()(
           ...namespacedState,
         }),
         {
-          partialize: (state) => ({ data: state.namespace_data }),
+          partialize: (state) => ({ namespace_data: state.namespace_data }),
         }
       ),
     {
@@ -73,13 +76,13 @@ export const { namespace: useSubNamespace } = getNamespaceHooks(
   s1
 );
 
-// useStore.namespaces.namespace1.temporal.getState();
-// useStore.namespaces.namespace2.persist.clearStorage();
-// useNamespace1.temporal;
-// useNamespace2.persist.clearStorage();
+useStore.namespaces.namespace1.temporal.getState();
+useStore.namespaces.namespace2.persist.clearStorage();
+useNamespace1.temporal;
+useNamespace2.persist.clearStorage();
 
-// useNamespace1.namespaces.namespace.temporal.getState();
-// useNamespace1((state) => state.data);
+useNamespace1.namespaces.namespace.temporal.getState();
+useNamespace1((state) => state.data);
 
-// useSubNamespace.persist.clearStorage();
-// useSubNamespace((state) => state.data);
+useSubNamespace.persist.clearStorage();
+useSubNamespace((state) => state.data);
