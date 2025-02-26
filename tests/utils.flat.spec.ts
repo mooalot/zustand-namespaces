@@ -1,6 +1,7 @@
+import { produce } from 'immer';
 import { describe, expect, it } from 'vitest';
 import { create } from 'zustand';
-import { Namespace } from '../src/types';
+import { immer } from 'zustand/middleware/immer';
 import {
   createNamespace,
   fromNamespace,
@@ -10,8 +11,6 @@ import {
   namespaced,
   toNamespace,
 } from '../src/utils';
-import { produce } from 'immer';
-import { immer } from 'zustand/middleware/immer';
 
 describe('Utility Functions', () => {
   describe('getPrefixedObject', () => {

@@ -1,28 +1,24 @@
-import { expect, test, describe } from 'vitest';
-import { expectType } from 'ts-expect';
 import type { TypeEqual } from 'ts-expect';
+import { expectType } from 'ts-expect';
+import { describe, expect, test } from 'vitest';
 
-import {
-  transformStateCreatorArgs,
-  getPrefixedObject,
-  getUnprefixedObject,
-  namespaced,
-  createNamespace,
-  toNamespace,
-  fromNamespace,
-  getNamespaceHooks,
-} from '../src/utils';
-import { StoreApi, StateCreator, create, UseBoundStore } from 'zustand';
+import { temporal, TemporalState } from 'zundo';
+import { create, StateCreator, StoreApi, UseBoundStore } from 'zustand';
+import { persist } from 'zustand/middleware';
 import {
   ExtractNamespace,
   FilterByPrefix,
-  Namespace,
-  PrefixObject,
   ToNamespace,
   UseBoundNamespace,
 } from '../src/types';
-import { temporal, TemporalState } from 'zundo';
-import { persist } from 'zustand/middleware';
+import {
+  createNamespace,
+  fromNamespace,
+  getNamespaceHooks,
+  namespaced,
+  toNamespace,
+  transformStateCreatorArgs,
+} from '../src/utils';
 
 type State = {
   user: {

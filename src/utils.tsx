@@ -1,4 +1,4 @@
-import { ExtractState, StateCreator, StoreApi, UseBoundStore } from 'zustand';
+import { StateCreator, StoreApi, UseBoundStore } from 'zustand';
 import {
   CreateNamespace,
   FilterByPrefix,

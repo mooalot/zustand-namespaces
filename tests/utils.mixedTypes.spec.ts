@@ -1,28 +1,8 @@
-import { expect, test, describe } from 'vitest';
 import { expectType } from 'ts-expect';
-import type { TypeEqual } from 'ts-expect';
+import { describe } from 'vitest';
 
-import {
-  transformStateCreatorArgs,
-  getPrefixedObject,
-  getUnprefixedObject,
-  namespaced,
-  createNamespace,
-  toNamespace,
-  fromNamespace,
-  getNamespaceHooks,
-} from '../src/utils';
-import { StoreApi, StateCreator, create, UseBoundStore } from 'zustand';
-import {
-  ExtractNamespace,
-  FilterByPrefix,
-  Namespace,
-  PrefixObject,
-  ToNamespace,
-  UseBoundNamespace,
-} from '../src/types';
-import { temporal, TemporalState } from 'zundo';
-import { persist } from 'zustand/middleware';
+import { create } from 'zustand';
+import { createNamespace, namespaced } from '../src/utils';
 
 type Namespace1 = {
   data: string;
@@ -36,7 +16,7 @@ describe('Mixed types', () => {
   it('should work with mixed types', () => {
     const namespace1 = createNamespace<Namespace1>()(
       'namespace1',
-      (set) => ({
+      () => ({
         data: 'Initial Data',
       }),
       {
@@ -44,13 +24,13 @@ describe('Mixed types', () => {
       }
     );
 
-    const namespace2 = createNamespace<Namespace2>()('namespace2', (set) => ({
+    const namespace2 = createNamespace<Namespace2>()('namespace2', () => ({
       data: 'Initial Data',
     }));
 
     const store = create(
       namespaced(
-        (state) => (set) => ({
+        (state) => () => ({
           data: 'Initial Data',
           ...state,
         }),

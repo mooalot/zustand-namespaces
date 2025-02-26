@@ -22,7 +22,7 @@ describe('Mixed types', () => {
 
     const store = create(
       namespaced(
-        (state) => (set) => ({
+        (state) => () => ({
           data: 'Initial Data',
           ...state,
         }),
