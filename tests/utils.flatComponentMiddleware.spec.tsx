@@ -6,7 +6,6 @@ import { temporal } from 'zundo';
 import { create } from 'zustand';
 import { createJSONStorage, persist, StateStorage } from 'zustand/middleware';
 import { createNamespace, namespaced, getNamespaceHooks } from '../src/utils';
-import { ExtractNamespace } from '../src/types';
 
 const storage: { [key: string]: string } = {};
 
@@ -22,11 +21,7 @@ const storageImplementation: StateStorage = {
   },
 };
 
-type SubNamespace = {
-  data: string;
-};
-
-const sn = createNamespace<SubNamespace>()(
+const sn = createNamespace<{ data: string }>()(
   'subNamespace',
   temporal(
     persist(
@@ -38,15 +33,17 @@ const sn = createNamespace<SubNamespace>()(
         storage: createJSONStorage(() => storageImplementation),
       }
     )
-  )
+  ),
+  {
+    flatten: true,
+  }
 );
 
-type Namespace1 = ExtractNamespace<typeof sn> & {
+const n1 = createNamespace<{
   data: string;
+  subNamespace_data: string;
   updateData: (data: string) => void;
-};
-
-const n1 = createNamespace<Namespace1>()(
+}>()(
   'namespace1',
   namespaced(
     (state) =>
@@ -58,14 +55,15 @@ const n1 = createNamespace<Namespace1>()(
     {
       namespaces: [sn],
     }
-  )
+  ),
+  {
+    flatten: true,
+  }
 );
 
-type Namespace2 = {
+const n2 = createNamespace<{
   data: string;
-};
-
-const n2 = createNamespace<Namespace2>()(
+}>()(
   'namespace2',
   persist(
     () => ({
@@ -75,7 +73,10 @@ const n2 = createNamespace<Namespace2>()(
       name: 'namespace2',
       storage: createJSONStorage(() => storageImplementation),
     }
-  )
+  ),
+  {
+    flatten: true,
+  }
 );
 
 const useStore = create(
@@ -87,8 +88,6 @@ const useStore = create(
 const { namespace1: useNamespace1, namespace2: useNamespace2 } =
   getNamespaceHooks(useStore, n1, n2);
 const { subNamespace: useSubNamespace } = getNamespaceHooks(useNamespace1, sn);
-
-useNamespace1.getState();
 
 const Namespace1Component = () => {
   const data = useNamespace1((state) => state.data);
@@ -143,19 +142,11 @@ describe('Zustand Namespace Stores', () => {
 describe('Zustand Namespaces with Components', () => {
   const resetStore = () => {
     act(() => {
-      useStore.setState((state) => ({
-        namespace1: {
-          ...state.namespace1,
-          data: 'Initial Namespace1 Data',
-          subNamespace: {
-            data: 'Initial SubNamespace Data',
-          },
-        },
-        namespace2: {
-          ...state.namespace2,
-          data: 'Initial Namespace2 Data',
-        },
-      }));
+      useStore.setState({
+        namespace1_data: 'Initial Namespace1 Data',
+        namespace1_subNamespace_data: 'Initial SubNamespace Data',
+        namespace2_data: 'Initial Namespace2 Data',
+      });
       useStore.namespaces.namespace1.temporal.getState().clear();
       useStore.namespaces.namespace2.persist.clearStorage();
       useStore.namespaces.namespace1.namespaces.subNamespace.temporal
@@ -270,12 +261,7 @@ describe('Zustand Namespaces with Components', () => {
   test('should be able to update data from namespace1 from root store and undo it from namespace1', () => {
     render(<App />);
     act(() => {
-      useStore.setState((state) => ({
-        namespace1: {
-          ...state.namespace1,
-          data: 'New Namespace1 Data',
-        },
-      }));
+      useStore.setState({ namespace1_data: 'New Namespace1 Data' });
     });
 
     expect(screen.getByTestId('namespace1-data')).toHaveTextContent(

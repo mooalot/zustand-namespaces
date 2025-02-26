@@ -1,4 +1,4 @@
-import { ExtractState, StateCreator, StoreApi, UseBoundStore } from 'zustand';
+import { StateCreator, StoreApi, UseBoundStore } from 'zustand';
 import {
   CreateNamespace,
   FilterByPrefix,
@@ -6,6 +6,7 @@ import {
   Namespaced,
   NamespacedState,
   PrefixObject,
+  ToNamespace,
   UnNamespacedState,
   UseBoundNamespace,
   WithNames,
@@ -16,16 +17,37 @@ import {
  * @param namespace The namespace to apply
  * @param api The api to apply the namespace to
  */
-function getNamespacedApi<T extends object, Name extends string>(
-  namespace: Namespace<FilterByPrefix<Name, T>, Name>,
+function getNamespacedApi<
+  T extends object,
+  Name extends string,
+  F extends boolean,
+  S extends string
+>(
+  namespace: Namespace<ToNamespace<T, Name, F, S>, Name, any, any, F, S>,
   api: WithNames<StoreApi<T>>
-): WithNames<StoreApi<FilterByPrefix<Name, T>>> {
-  const namespacedApi: WithNames<StoreApi<FilterByPrefix<Name, T>>> = {
+): WithNames<StoreApi<ToNamespace<T, Name, F, S>>> {
+  const namespacedApi: WithNames<StoreApi<ToNamespace<T, Name, F, S>>> = {
     getInitialState: () => {
-      return getUnprefixedObject(namespace.name, api.getInitialState());
+      if (namespace.options?.flatten) {
+        return getUnprefixedObject(
+          namespace.name,
+          api.getInitialState(),
+          namespace.options?.separator ?? '_'
+        );
+      } else {
+        return (api.getInitialState() as any)?.[namespace.name] ?? {};
+      }
     },
     getState: () => {
-      return getUnprefixedObject(namespace.name, api.getState());
+      if (namespace.options?.flatten) {
+        return getUnprefixedObject(
+          namespace.name,
+          api.getState(),
+          namespace.options?.separator ?? '_'
+        );
+      } else {
+        return (api.getState() as any)?.[namespace.name] ?? {};
+      }
     },
     setState: (state, replace) => {
       namespacedApi._payload = {}; //payload isnt used, but stops namespaces from being traveresd too many times
@@ -33,12 +55,30 @@ function getNamespacedApi<T extends object, Name extends string>(
        * Log is used for testing purposes. Specifically to test that the setState method is only called once per setState call.
        */
       console.debug(`test: setState_${namespace.name}`);
-      const currentState = api.getState();
-      const unprefixedState = getUnprefixedObject(namespace.name, currentState);
+      const apiCurrentState = api.getState();
+      const currentState = namespace.options?.flatten
+        ? getUnprefixedObject(
+            namespace.name,
+            apiCurrentState,
+            namespace.options?.separator ?? '_'
+          )
+        : (apiCurrentState as any)[namespace.name] ?? {};
       const updatedState =
-        typeof state === 'function' ? state(unprefixedState) : state;
+        typeof state === 'function' ? (state as any)(currentState) : state;
 
-      const newState = getPrefixedObject(namespace.name, updatedState);
+      const newState = namespace.options?.flatten
+        ? getPrefixedObject(
+            namespace.name,
+            updatedState,
+            namespace.options?.separator ?? '_'
+          )
+        : {
+            [namespace.name]: {
+              ...currentState,
+              ...updatedState,
+            },
+          };
+
       if (api._payload) {
         api._payload = {
           ...api._payload,
@@ -46,27 +86,55 @@ function getNamespacedApi<T extends object, Name extends string>(
         };
       } else {
         if (replace) {
-          const replaceState = { ...currentState };
-          const specificToNamespace = getPrefixedObject(
-            namespace.name,
-            unprefixedState
-          );
-          for (const key in specificToNamespace) {
-            delete replaceState[key];
+          const replaceState = { ...apiCurrentState };
+
+          if (namespace.options?.flatten) {
+            const specificToNamespace = getPrefixedObject(
+              namespace.name,
+              currentState,
+              namespace.options?.separator ?? '_'
+            );
+            for (const key in specificToNamespace) {
+              delete (replaceState as any)[key];
+            }
+          } else {
+            newState[namespace.name] = updatedState;
           }
           api.setState({ ...replaceState, ...newState } as T, replace as any);
         } else {
-          api.setState(newState as T);
+          if (namespace.options?.flatten) {
+            api.setState(newState as T);
+          } else {
+            api.setState({
+              ...apiCurrentState,
+              ...newState,
+            } as T);
+          }
         }
       }
       delete namespacedApi._payload;
     },
     subscribe: (listener) => {
       return api.subscribe((newState, oldState) => {
-        listener(
-          getUnprefixedObject(namespace.name, newState),
-          getUnprefixedObject(namespace.name, oldState)
-        );
+        if (namespace.options?.flatten) {
+          listener(
+            getUnprefixedObject(
+              namespace.name,
+              newState,
+              namespace.options?.separator ?? '_'
+            ) as any,
+            getUnprefixedObject(
+              namespace.name,
+              oldState,
+              namespace.options?.separator ?? '_'
+            ) as any
+          );
+        } else {
+          listener(
+            (newState as any)?.[namespace.name] ?? {},
+            (oldState as any)?.[namespace.name] ?? {}
+          );
+        }
       });
     },
     namespaces: {},
@@ -79,11 +147,20 @@ function getNamespacedApi<T extends object, Name extends string>(
 
 export function transformStateCreatorArgs<
   N extends string,
-  State extends object
+  State extends object,
+  Flatten extends boolean = false,
+  Separator extends string = '_'
 >(
-  namespace: Namespace<FilterByPrefix<N, State>, N>,
+  namespace: Namespace<
+    ToNamespace<State, N, Flatten, Separator>,
+    N,
+    any,
+    any,
+    Flatten,
+    Separator
+  >,
   ...args: Parameters<StateCreator<State>>
-): Parameters<StateCreator<FilterByPrefix<N, State>>> {
+): Parameters<StateCreator<ToNamespace<State, N, Flatten, Separator>>> {
   const [, , originalApi] = args;
 
   const newApi = getNamespacedApi(
@@ -94,33 +171,35 @@ export function transformStateCreatorArgs<
   return [newApi.setState, newApi.getState, newApi];
 }
 
-export function getPrefixedObject<T extends string, O extends object>(
-  typePrefix: T,
-  obj: O | undefined
-) {
-  if (!obj) return undefined as unknown as PrefixObject<T, O>;
+export function getPrefixedObject<
+  T extends string,
+  O extends object,
+  S extends string
+>(typePrefix: T, obj: O | undefined, separator: S) {
+  if (!obj) return undefined as unknown as PrefixObject<T, O, S>;
   return Object.entries(obj).reduce((acc, [key, value]) => {
     return {
       ...acc,
-      [`${typePrefix}_${key}`]: value,
+      [`${typePrefix}${separator}${key}`]: value,
     };
-  }, {} as PrefixObject<T, O>);
+  }, {} as PrefixObject<T, O, S>);
 }
 
-export function getUnprefixedObject<T extends string, Data extends object>(
-  typePrefix: T,
-  obj: Data | undefined
-): FilterByPrefix<T, Data> {
-  if (!obj) return undefined as unknown as FilterByPrefix<T, Data>;
+export function getUnprefixedObject<
+  T extends string,
+  Data extends object,
+  S extends string
+>(typePrefix: T, obj: Data | undefined, separator: S) {
+  if (!obj) return undefined as unknown as FilterByPrefix<T, Data, S>;
   return Object.entries(obj).reduce((acc, [key, value]) => {
-    if (key.startsWith(`${typePrefix}_`)) {
+    if (key.startsWith(`${typePrefix}${separator}`)) {
       return {
         ...acc,
         [key.slice(typePrefix.length + 1)]: value,
       };
     }
     return acc;
-  }, {} as FilterByPrefix<T, Data>);
+  }, {} as FilterByPrefix<T, Data, S>);
 }
 
 /**
@@ -144,8 +223,8 @@ function spreadNamespaces<Namespaces extends readonly Namespace[], Data>(
 function transformCallback<State extends object>(
   ...args: Parameters<StateCreator<State>>
 ) {
-  return function <P extends string>(
-    namespace: Namespace<FilterByPrefix<P, State>, P>
+  return function <N extends string, F extends boolean, S extends string>(
+    namespace: Namespace<ToNamespace<State, N, F, S>, N, any, any, F, S>
   ) {
     const originalApi = args[2] as WithNames<StoreApi<State>>;
     const [set, get, api] = transformStateCreatorArgs(namespace, ...args);
@@ -158,14 +237,31 @@ function transformCallback<State extends object>(
       },
     });
 
-    return getPrefixedObject(namespace.name, namespace.creator(set, get, api));
+    if (namespace.options?.flatten) {
+      return getPrefixedObject(
+        namespace.name,
+        namespace.creator(set, get, api) as any,
+        namespace.options?.separator ?? '_'
+      );
+    } else {
+      return {
+        [namespace.name]: namespace.creator(set, get, api),
+      };
+    }
   };
 }
 
 export function getNamespaceHooks<
   S extends StoreApi<any> & { namespaces: any },
-  Namespaces extends readonly Namespace<any, string, any, any>[],
-  CurrentNamespaces extends readonly Namespace<any, string, any, any>[] = []
+  Namespaces extends readonly Namespace<any, string, any, any, any, any>[],
+  CurrentNamespaces extends readonly Namespace<
+    any,
+    string,
+    any,
+    any,
+    any,
+    any
+  >[] = []
 >(
   store: UseBoundStore<S> | UseBoundNamespace<S, CurrentNamespaces>,
   ...namespaces: Namespaces
@@ -182,18 +278,28 @@ export function getNamespaceHooks<
         any,
         infer N,
         any,
+        any,
+        any,
         any
       >
         ? N extends string
           ? N
           : never
-        : never]: UseBoundNamespace<
-        NewNamespace['name'] extends keyof S['namespaces']
-          ? S['namespaces'][NewNamespace['name']] &
-              StoreApi<FilterByPrefix<NewNamespace['name'], ExtractState<S>>>
-          : never,
-        [...CurrentNamespaces, NewNamespace]
-      >;
+        : never]: NewNamespace extends Namespace<
+        infer T,
+        infer N,
+        any,
+        any,
+        any,
+        any
+      >
+        ? UseBoundNamespace<
+            N extends keyof S['namespaces']
+              ? S['namespaces'][N] & StoreApi<T>
+              : never,
+            [...CurrentNamespaces, NewNamespace]
+          >
+        : never;
     }
   );
 }
@@ -201,16 +307,18 @@ export function getNamespaceHooks<
 function getOneNamespaceHook<
   Name extends string,
   Store extends object,
-  Namespaces extends readonly Namespace[]
+  Namespaces extends readonly Namespace[],
+  F extends boolean,
+  S extends string
 >(
   useStore:
     | UseBoundStore<StoreApi<Store>>
     | UseBoundNamespace<StoreApi<Store>, Namespaces>,
-  namespace: Namespace<FilterByPrefix<Name, Store>, Name>
+  namespace: Namespace<ToNamespace<Store, Name, F, S>, Name, any, any, F, S>
 ) {
   type BoundStore = UseBoundNamespace<
-    StoreApi<FilterByPrefix<Name, Store>>,
-    [Namespace<FilterByPrefix<Name, Store>, Name>, ...Namespaces]
+    StoreApi<ToNamespace<Store, Name, F, S>>,
+    [Namespace<ToNamespace<Store, Name, F, S>, Name>, ...Namespaces]
   >;
   const hook = ((selector) => {
     return useStore((state) => {
@@ -241,11 +349,20 @@ function getOneNamespaceHook<
  */
 export function toNamespace<
   State,
-  Namespaces extends readonly Namespace<any, string, any, any>[]
+  Namespaces extends readonly Namespace<any, string, any, any, any, any>[]
 >(state: State, ...namespaces: Namespaces): NamespacedState<State, Namespaces> {
   let current: any = state;
   for (let i = 0; i < namespaces.length; i++) {
-    current = getUnprefixedObject(namespaces[i].name, current);
+    const namespace = namespaces[i];
+    if (namespace.options?.flatten) {
+      current = getUnprefixedObject(
+        namespace.name,
+        current,
+        namespace.options?.separator ?? '_'
+      );
+    } else {
+      current = current?.[namespace.name] ?? {};
+    }
   }
   return current;
 }
@@ -258,28 +375,39 @@ export function toNamespace<
  */
 export function fromNamespace<
   State,
-  Namespaces extends readonly Namespace<any, string, any, any>[]
+  Namespaces extends readonly Namespace<any, string, any, any, any, any>[]
 >(
   state: State,
   ...namespaces: Namespaces
 ): UnNamespacedState<State, Namespaces> {
   let current: any = state;
   for (let i = namespaces.length - 1; i >= 0; i--) {
-    current = getPrefixedObject(namespaces[i].name, current);
+    const namespace = namespaces[i];
+    if (namespace.options?.flatten) {
+      current = getPrefixedObject(
+        namespace.name,
+        current,
+        namespace.options?.separator ?? '_'
+      );
+    } else {
+      current = { [namespace.name]: current };
+    }
   }
   return current;
 }
 
-export const createNamespace = ((one?: any, two?: any) => {
+export const createNamespace = ((one?: any, two?: any, options?: any) => {
   if (one && two) {
     return {
       name: one,
       creator: two,
+      options,
     };
   } else {
-    return (name: any, creator: any) => ({
+    return (name: any, creator: any, options: any) => ({
       name,
       creator,
+      options,
     });
   }
 }) as CreateNamespace;
@@ -297,6 +425,7 @@ function getRootApi<Store extends object>(
 ): WithNames<StoreApi<Store>> {
   const originalSet = api.setState;
   const setState: StoreApi<Store>['setState'] = (state, replace) => {
+    console.log('setState', state);
     api._payload = {};
 
     const currentState = api.getState();
@@ -348,6 +477,7 @@ function getRootApi<Store extends object>(
     callSetOnNamespaces(newState, api.namespaces);
 
     const payload = api._payload;
+    console.log('payload', payload);
 
     // merge the remaining keys that were not applied to the namespaces and the payload from the namespaces
     originalSet(
