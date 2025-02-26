@@ -46,20 +46,58 @@ const useStore = create(
 
 export const { namespaceA: useNamespaceA, namespaceB: useNamespaceB } =
   getNamespaceHooks(useStore, namespaceA, namespaceB);
-
-useStore((state) => state.namespaceA_dataInNamespaceA);
-useStore((state) => state.namespaceB_dataInNamespaceB);
-useStore((state) => state.mainData);
-useStore.getState;
-useStore.setState;
-
-useNamespaceA((state) => state.dataInNamespaceA);
-useNamespaceA.getState;
-useNamespaceA.setState;
-useNamespaceB((state) => state.dataInNamespaceB);
-useNamespaceB.getState;
-useNamespaceB.setState;
 ```
+
+## State Structure
+
+There are two state structure approaches that can be taken when using Zustand Namespaces: nested and flattened.
+You can choose which approach to use by setting the `flatten` option to `true` when creating a namespace.
+
+```javascript
+const namespaceA = createNamespace(
+  'namespaceA',
+  () => ({
+    dataInNamespaceA: 'data',
+  }),
+  {
+    flatten: true,
+    // Add a custom separator for flattened namespaces
+    separator: '_',
+  }
+);
+```
+
+### Nested (default)
+
+This is the default approach, where each namespace is nested within sub-objects.
+
+```javascript
+{
+  namespaceA: {
+    dataInNamespaceA: 'data',
+  },
+  namespaceB: {
+    dataInNamespaceB: 'data',
+  },
+  mainData: 'data',
+}
+```
+
+This approach is a good choice when you want to keep your state structure clean and organized. However, it can be more difficult to access and update state values. This method also inhibits the use of parent middleware to access child state (e.g., you can't partialize a subnamespaces state).
+
+### Flattened
+
+This approach flattens all namespaces into a single object.
+
+```javascript
+{
+  namespaceA_dataInNamespaceA: 'data',
+  namespaceB_dataInNamespaceB: 'data',
+  mainData: 'data',
+}
+```
+
+This approach is a good choice when you want to easily access and update state values. However, it can make your state structure harder to read. This method also allows for parent middleware to access child state (e.g., you can partialize a subnamespaces state).
 
 ## TypeScript Support
 
@@ -80,3 +118,8 @@ More examples can be found in the [examples directory](https://github.com/mooalo
 - **toNamespace**: Extracts a namespace's state from some parent state.
 - **fromNamespace**: Converts namespace state to some parent state.
 - **getNamespaceHooks**: Returns hooks for each namespace.
+
+## Key Types
+
+- **ExtractNamespace**: Extracts a namespace type from a namespace.
+- **ExtractNamespaces**: Extracts all namespace types from a list of namespaces.

@@ -513,4 +513,22 @@ describe('createNamespace', () => {
       >
     >(useSubNamespace);
   });
+
+  test('should be able to add a separator to the namespace', () => {
+    const namespace = createNamespace(
+      'namespace',
+      () => ({
+        key: 'value',
+      }),
+      { separator: 'test', flatten: true }
+    );
+
+    const useStore = create(namespaced({ namespaces: [namespace] }));
+
+    const { namespace: useNamespace } = getNamespaceHooks(useStore, namespace);
+
+    expectType<{
+      namespacetestkey: string;
+    }>(useNamespace.getRawState());
+  });
 });

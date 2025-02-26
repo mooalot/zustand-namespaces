@@ -36,7 +36,14 @@ export type ExtractNamespaces<
 > = UnionToIntersection<ExtractNamespace<T[number]>>;
 
 type NamespaceOptions<Flatten extends boolean, Separator extends string> = {
+  /**
+   * Whether to flatten the namespace.
+   */
   flatten?: Flatten;
+
+  /**
+   * The separator to use when flattening the namespace.
+   */
   separator?: Separator;
 };
 
