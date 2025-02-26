@@ -33,7 +33,10 @@ const sn = createNamespace<{ data: string }>()(
         storage: createJSONStorage(() => storageImplementation),
       }
     )
-  )
+  ),
+  {
+    flatten: true,
+  }
 );
 
 const n1 = createNamespace<{
@@ -52,7 +55,10 @@ const n1 = createNamespace<{
     {
       namespaces: [sn],
     }
-  )
+  ),
+  {
+    flatten: true,
+  }
 );
 
 const n2 = createNamespace<{
@@ -67,7 +73,10 @@ const n2 = createNamespace<{
       name: 'namespace2',
       storage: createJSONStorage(() => storageImplementation),
     }
-  )
+  ),
+  {
+    flatten: true,
+  }
 );
 
 const useStore = create(
@@ -287,7 +296,7 @@ describe('Zustand Namespaces with Components', () => {
   });
 
   test('should be able to store data with persist and create a new store with that same data if it uses the same name', () => {
-    let namespace = createNamespace<{
+    const namespace = createNamespace<{
       data: string;
     }>()(
       'namespace',
@@ -299,7 +308,10 @@ describe('Zustand Namespaces with Components', () => {
           name: 'namespace',
           storage: createJSONStorage(() => storageImplementation),
         }
-      )
+      ),
+      {
+        flatten: true,
+      }
     );
     let store = create(
       namespaced({
@@ -319,21 +331,6 @@ describe('Zustand Namespaces with Components', () => {
       state: { data: 'New Namespace Data' },
       version: 0,
     });
-
-    namespace = createNamespace<{
-      data: string;
-    }>()(
-      'namespace',
-      persist(
-        () => ({
-          data: 'hi',
-        }),
-        {
-          name: 'namespace',
-          storage: createJSONStorage(() => storageImplementation),
-        }
-      )
-    );
     // create a new store with the same namespace name
     store = create(
       namespaced({
@@ -349,6 +346,65 @@ describe('Zustand Namespaces with Components', () => {
 
     // get the hook for the new store
     ({ namespace: useNamespace } = getNamespaceHooks(store, namespace));
+
+    // check to make sure the data is still there
+    expect(useNamespace.getState().data).toBe('New Namespace Data');
+  });
+});
+
+describe('nested: Zustand Namespaces', () => {
+  test('nested: should be able to store data with persist and create a new store with that same data if it uses the same name', () => {
+    console.log('start');
+    const namespace = createNamespace<{
+      data: string;
+    }>()(
+      'nested',
+      persist(
+        () => ({
+          data: 'hi',
+        }),
+        {
+          name: 'nested',
+          storage: createJSONStorage(() => storageImplementation),
+        }
+      )
+    );
+    let store = create(
+      namespaced({
+        namespaces: [namespace],
+      })
+    );
+
+    let { nested: useNamespace } = getNamespaceHooks(store, namespace);
+
+    // set data in namespace
+    act(() => {
+      useNamespace.setState({ data: 'New Namespace Data' });
+    });
+
+    console.log('storage', storage);
+    // check t omake sure the data is set in storage
+    expect(JSON.parse(storage['nested'])).toEqual({
+      state: { data: 'New Namespace Data' },
+      version: 0,
+    });
+
+    // create a new store with the same namespace name
+    store = create(
+      namespaced({
+        namespaces: [namespace],
+      })
+    );
+
+    console.log('storage', storage);
+    // check to make sure the data is still there
+    expect(JSON.parse(storage['nested'])).toEqual({
+      state: { data: 'New Namespace Data' },
+      version: 0,
+    });
+
+    // get the hook for the new store
+    ({ nested: useNamespace } = getNamespaceHooks(store, namespace));
 
     // check to make sure the data is still there
     expect(useNamespace.getState().data).toBe('New Namespace Data');

@@ -19,7 +19,7 @@ describe('Utility Functions', () => {
       const input = { key1: 'value1', key2: 'value2' };
       const prefix = 'prefix';
 
-      const result = getPrefixedObject(prefix, input);
+      const result = getPrefixedObject(prefix, input, '_');
 
       expect(result).toEqual({
         prefix_key1: 'value1',
@@ -33,7 +33,7 @@ describe('Utility Functions', () => {
       const input = { prefix_key1: 'value1', prefix_key2: 'value2' };
       const prefix = 'prefix';
 
-      const result = getUnprefixedObject(prefix, input);
+      const result = getUnprefixedObject(prefix, input, '_');
 
       expect(result).toEqual({
         key1: 'value1',
@@ -45,7 +45,7 @@ describe('Utility Functions', () => {
       const input = { prefix_key1: 'value1', other_key: 'value2' };
       const prefix = 'prefix';
 
-      const result = getUnprefixedObject(prefix, input);
+      const result = getUnprefixedObject(prefix, input, '_');
 
       expect(result).toEqual({
         key1: 'value1',
@@ -55,14 +55,22 @@ describe('Utility Functions', () => {
 
   describe('stateToNamespace', () => {
     it('should extract unprefixed state for a namespace', () => {
-      const subNamespace: Namespace = {
-        name: 'subNamespace1',
-        creator: () => ({ key: 'value' }),
-      };
-      const namespace: Namespace = {
-        name: 'namespace1',
-        creator: () => ({ key: 'value' }),
-      };
+      const subNamespace = createNamespace(
+        'subNamespace1',
+        () => ({ key: 'value' }),
+        {
+          flatten: true,
+        }
+      );
+      const namespace = createNamespace(
+        'namespace1',
+        namespaced((state) => () => ({ key: 'value', ...state }), {
+          namespaces: [subNamespace],
+        }),
+        {
+          flatten: true,
+        }
+      );
       const state = {
         namespace1_key: 'value',
         namespace1_subNamespace1_key: 'value',
@@ -90,14 +98,19 @@ describe('Utility Functions', () => {
   });
 
   it('should be able to getRawState from a namespaced store', () => {
-    const subNamespace = createNamespace('subNamespace', () => ({
-      key: 'value',
-    }));
+    const subNamespace = createNamespace(
+      'subNamespace',
+      () => ({
+        key: 'value',
+      }),
+      { flatten: true }
+    );
     const namespace = createNamespace(
       'namespace',
       namespaced((state) => () => ({ key: 'value', ...state }), {
         namespaces: [subNamespace],
-      })
+      }),
+      { flatten: true }
     );
 
     const useStore = create(
@@ -125,14 +138,19 @@ describe('Utility Functions', () => {
   });
 
   it('should be able to go to and from a namespace', () => {
-    const subNamespace = createNamespace('subNamespace', () => ({
-      key: 'value',
-    }));
+    const subNamespace = createNamespace(
+      'subNamespace',
+      () => ({
+        key: 'value',
+      }),
+      { flatten: true }
+    );
     const namespace = createNamespace(
       'namespace',
       namespaced((state) => () => ({ key: 'value', ...state }), {
         namespaces: [subNamespace],
-      })
+      }),
+      { flatten: true }
     );
 
     const state = {
@@ -152,14 +170,19 @@ describe('Utility Functions', () => {
   });
 
   it('should be able to modify api methods with middleware', () => {
-    const subNamespace = createNamespace('subNamespace', () => ({
-      key: 'value',
-    }));
+    const subNamespace = createNamespace(
+      'subNamespace',
+      () => ({
+        key: 'value',
+      }),
+      { flatten: true }
+    );
     const namespace = createNamespace(
       'namespace',
       namespaced((state) => immer(() => ({ key: 'value', ...state })), {
         namespaces: [subNamespace],
-      })
+      }),
+      { flatten: true }
     );
 
     const useStore = create(
@@ -202,10 +225,14 @@ describe('Utility Functions', () => {
   });
 
   it('should replace state', () => {
-    const namespace = createNamespace('namespace', () => ({
-      key: 'value',
-      key2: 'value2',
-    }));
+    const namespace = createNamespace(
+      'namespace',
+      () => ({
+        key: 'value',
+        key2: 'value2',
+      }),
+      { flatten: true }
+    );
 
     const useStore = create(
       namespaced((state) => () => ({ key: 'value', ...state }), {

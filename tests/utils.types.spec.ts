@@ -29,20 +29,20 @@ type State = {
   admin_level: number;
 };
 
-type UserNamespace = Namespace<FilterByPrefix<'user', State>, 'user'>;
+type UserNamespace = Namespace<FilterByPrefix<'user', State, '_'>, 'user'>;
 
-type AdminNamespace = Namespace<FilterByPrefix<'admin', State>, 'admin'>;
+type AdminNamespace = Namespace<FilterByPrefix<'admin', State, '_'>, 'admin'>;
 
 describe('transformStateCreatorArgs', () => {
   test('should transform state creator arguments', () => {
-    const mockNamespace: UserNamespace = {
-      name: 'user',
-      creator: () => ({
+    const mockNamespace = createNamespace(
+      'user',
+      () => ({
         name: 'Alice',
         age: 25,
       }),
-    };
-
+      { flatten: true }
+    );
     const originalArgs: Parameters<StateCreator<State>> = [
       () => {},
       () => ({} as State),
@@ -67,23 +67,23 @@ describe('transformStateCreatorArgs', () => {
 describe('getPrefixedObject', () => {
   test('should prefix object keys', () => {
     const obj = { name: 'Alice', age: 25 };
-    const prefixedObj = getPrefixedObject('user', obj);
+    const prefixedObj = getPrefixedObject('user', obj, '_');
 
     expect(prefixedObj).toEqual({
       user_name: 'Alice',
       user_age: 25,
     });
 
-    expectType<TypeEqual<typeof prefixedObj, PrefixObject<'user', typeof obj>>>(
-      true
-    );
+    expectType<
+      TypeEqual<typeof prefixedObj, PrefixObject<'user', typeof obj, '_'>>
+    >(true);
   });
 });
 
 describe('getUnprefixedObject', () => {
   test('should remove prefix from object keys', () => {
     const obj = { user_name: 'Alice', user_age: 25 };
-    const unprefixedObj = getUnprefixedObject('user', obj);
+    const unprefixedObj = getUnprefixedObject('user', obj, '_');
 
     expect(unprefixedObj).toEqual({
       name: 'Alice',
@@ -91,7 +91,7 @@ describe('getUnprefixedObject', () => {
     });
 
     expectType<
-      TypeEqual<typeof unprefixedObj, FilterByPrefix<'user', typeof obj>>
+      TypeEqual<typeof unprefixedObj, FilterByPrefix<'user', typeof obj, '_'>>
     >(true);
   });
 });
@@ -119,7 +119,7 @@ describe('divide', () => {
 
     expectType<
       StateCreator<
-        FilterByPrefix<'user', State> & FilterByPrefix<'admin', State>
+        FilterByPrefix<'user', State, '_'> & FilterByPrefix<'admin', State, '_'>
       >
     >(combinedCreator);
   });
@@ -152,14 +152,22 @@ describe('divide', () => {
   });
 
   test('should infer the divide type', () => {
-    const userNamespace = createNamespace('user', () => ({
-      name: 'Alice',
-      age: 25,
-    }));
+    const userNamespace = createNamespace(
+      'user',
+      () => ({
+        name: 'Alice',
+        age: 25,
+      }),
+      { flatten: true }
+    );
 
-    const adminNamespace = createNamespace('admin', () => ({
-      level: 1,
-    }));
+    const adminNamespace = createNamespace(
+      'admin',
+      () => ({
+        level: 1,
+      }),
+      { flatten: true }
+    );
 
     const useStore = create(
       namespaced({ namespaces: [userNamespace, adminNamespace] })
@@ -171,13 +179,14 @@ describe('divide', () => {
 
 describe('namespaceHook', () => {
   test('should create a namespace hook', () => {
-    const userNamespace: UserNamespace = {
-      name: 'user',
-      creator: () => ({
+    const userNamespace = createNamespace(
+      'user',
+      () => ({
         name: 'Alice',
         age: 25,
       }),
-    };
+      { flatten: true }
+    );
 
     const useStore = create<State>()(
       namespaced(
@@ -192,28 +201,30 @@ describe('namespaceHook', () => {
     const { user: hook } = getNamespaceHooks(useStore, userNamespace);
 
     expect(hook).toBeDefined();
-    expectType<UseBoundNamespace<StoreApi<FilterByPrefix<'user', State>>, any>>(
-      hook
-    );
+    expectType<
+      UseBoundNamespace<StoreApi<FilterByPrefix<'user', State, '_'>>, any>
+    >(hook);
   });
 });
 
 describe('namespaceHooks', () => {
   test('should create multiple namespace hooks', () => {
-    const userNamespace: UserNamespace = {
-      name: 'user',
-      creator: () => ({
+    const userNamespace = createNamespace(
+      'user',
+      () => ({
         name: 'Alice',
         age: 25,
       }),
-    };
+      { flatten: true }
+    );
 
-    const adminNamespace: AdminNamespace = {
-      name: 'admin',
-      creator: () => ({
+    const adminNamespace = createNamespace(
+      'admin',
+      () => ({
         level: 1,
       }),
-    };
+      { flatten: true }
+    );
 
     const useStore = create<State>()(
       namespaced(
@@ -233,24 +244,25 @@ describe('namespaceHooks', () => {
     expect(useUser).toBeDefined();
     expect(useAdmin).toBeDefined();
 
-    expectType<UseBoundNamespace<StoreApi<FilterByPrefix<'user', State>>, any>>(
-      useUser
-    );
     expectType<
-      UseBoundNamespace<StoreApi<FilterByPrefix<'admin', State>>, any>
+      UseBoundNamespace<StoreApi<FilterByPrefix<'user', State, '_'>>, any>
+    >(useUser);
+    expectType<
+      UseBoundNamespace<StoreApi<FilterByPrefix<'admin', State, '_'>>, any>
     >(useAdmin);
   });
 });
 
 describe('stateToNamespace', () => {
   test('should extract namespace from state', () => {
-    const userNamespace: UserNamespace = {
-      name: 'user',
-      creator: () => ({
+    const userNamespace = createNamespace(
+      'user',
+      () => ({
         name: 'Alice',
         age: 25,
       }),
-    };
+      { flatten: true }
+    );
 
     const state: State = {
       user_name: 'Alice',
@@ -265,26 +277,54 @@ describe('stateToNamespace', () => {
       age: 25,
     });
 
-    expectType<FilterByPrefix<'user', State>>(namespace);
+    expectType<FilterByPrefix<'user', State, '_'>>(namespace);
+  });
+  test('should extract namespace from state if namespace is nested', () => {
+    const userNamespace = createNamespace('user', () => ({
+      name: 'Alice',
+      age: 25,
+    }));
+
+    const state = {
+      user: {
+        name: 'Alice',
+        age: 25,
+      },
+      admin: 1,
+    };
+
+    const namespace = toNamespace(state, userNamespace);
+
+    expect(namespace).toEqual({
+      name: 'Alice',
+      age: 25,
+    });
+
+    expectType<{ name: string; age: number }>(namespace);
   });
 });
 
 describe('namespaceToState', () => {
   test('should add prefix to namespace state', () => {
-    const subNamespace: AdminNamespace = {
-      name: 'admin',
-      creator: () => ({
+    const subNamespace = createNamespace(
+      'admin',
+      () => ({
         level: 1,
       }),
-    };
-    const userNamespace: UserNamespace = {
-      name: 'user',
-
-      creator: () => ({
+      {
+        flatten: true,
+      }
+    );
+    const userNamespace = createNamespace(
+      'user',
+      () => ({
         name: 'Alice',
         age: 25,
       }),
-    };
+      {
+        flatten: true,
+      }
+    );
 
     const state = { name: 'Alice', age: 25 };
 
@@ -306,7 +346,29 @@ describe('namespaceToState', () => {
       user_admin_age: 25,
     });
 
-    expectType<PrefixObject<'user', typeof state>>(namespacedState);
+    expectType<PrefixObject<'user', typeof state, '_'>>(namespacedState);
+  });
+
+  test('should add prefix to namespace state if namespace is nested', () => {
+    const userNamespace = createNamespace('user', () => ({
+      name: 'Alice',
+      age: 25,
+    }));
+
+    const state = { name: 'Alice', age: 25 };
+
+    const namespacedState = fromNamespace(state, userNamespace);
+
+    expect(namespacedState).toEqual({
+      user: {
+        name: 'Alice',
+        age: 25,
+      },
+    });
+
+    expectType<{
+      user: { name: string; age: number };
+    }>(namespacedState);
   });
 });
 
@@ -322,14 +384,23 @@ describe('createNamespace', () => {
   });
 
   test('should create have typed raw state', () => {
-    const subNamespace = createNamespace('subNamespace', () => ({
-      key: 'value',
-    }));
+    const subNamespace = createNamespace(
+      'subNamespace',
+      () => ({
+        key: 'value',
+      }),
+      {
+        flatten: true,
+      }
+    );
     const namespace = createNamespace(
       'namespace',
       namespaced((state) => () => ({ key: 'value', ...state }), {
         namespaces: [subNamespace],
-      })
+      }),
+      {
+        flatten: true,
+      }
     );
 
     const useStore = create(
@@ -391,9 +462,9 @@ describe('createNamespace', () => {
     );
 
     expectType<
-      StoreApi<FilterByPrefix<'namespace', State>> & {
+      StoreApi<FilterByPrefix<'namespace', State, '_'>> & {
         namespaces: {
-          subNamespace: StoreApi<FilterByPrefix<'subNamespace', State>>;
+          subNamespace: StoreApi<FilterByPrefix<'subNamespace', State, '_'>>;
         };
         persist: {
           getOptions: any;
@@ -404,11 +475,19 @@ describe('createNamespace', () => {
     >(useStore.namespaces.namespace);
     expectType<
       StoreApi<
-        FilterByPrefix<'subNamespace', FilterByPrefix<'namespace', State>>
+        FilterByPrefix<
+          'subNamespace',
+          FilterByPrefix<'namespace', State, '_'>,
+          '_'
+        >
       > & {
         temporal: StoreApi<
           TemporalState<
-            FilterByPrefix<'subNamespace', FilterByPrefix<'namespace', State>>
+            FilterByPrefix<
+              'subNamespace',
+              FilterByPrefix<'namespace', State, '_'>,
+              '_'
+            >
           >
         >;
       }
@@ -416,7 +495,7 @@ describe('createNamespace', () => {
 
     expectType<
       UseBoundNamespace<
-        StoreApi<FilterByPrefix<'namespace', State>>,
+        StoreApi<FilterByPrefix<'namespace', State, '_'>>,
         [typeof namespace]
       >
     >(useNamespace);
@@ -424,7 +503,11 @@ describe('createNamespace', () => {
     expectType<
       UseBoundNamespace<
         StoreApi<
-          FilterByPrefix<'subNamespace', FilterByPrefix<'namespace', State>>
+          FilterByPrefix<
+            'subNamespace',
+            FilterByPrefix<'namespace', State, '_'>,
+            '_'
+          >
         >,
         [typeof namespace, typeof subNamespace]
       >
