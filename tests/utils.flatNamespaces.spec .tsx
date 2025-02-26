@@ -7,9 +7,15 @@ import { createNamespace, getNamespaceHooks, namespaced } from '../src/utils';
 afterEach(cleanup);
 
 describe('Zustand Namespace Stores', () => {
-  const subNamespace = createNamespace('subNamespace', () => ({
-    data: 'Initial SubNamespace Data',
-  }));
+  const subNamespace = createNamespace(
+    'subNamespace',
+    () => ({
+      data: 'Initial SubNamespace Data',
+    }),
+    {
+      flatten: true,
+    }
+  );
 
   // Define namespacesƒ
   const namespace = createNamespace(
@@ -20,7 +26,10 @@ describe('Zustand Namespace Stores', () => {
         ...state,
       }),
       { namespaces: [subNamespace] }
-    )
+    ),
+    {
+      flatten: true,
+    }
   );
 
   // Create zustand store

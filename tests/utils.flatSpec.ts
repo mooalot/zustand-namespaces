@@ -55,22 +55,25 @@ describe('Utility Functions', () => {
 
   describe('stateToNamespace', () => {
     it('should extract unprefixed state for a namespace', () => {
-      const subNamespace = createNamespace('subNamespace1', () => ({
-        key: 'value',
-      }));
+      const subNamespace = createNamespace(
+        'subNamespace1',
+        () => ({ key: 'value' }),
+        {
+          flatten: true,
+        }
+      );
       const namespace = createNamespace(
         'namespace1',
         namespaced((state) => () => ({ key: 'value', ...state }), {
           namespaces: [subNamespace],
-        })
+        }),
+        {
+          flatten: true,
+        }
       );
       const state = {
-        namespace1: {
-          key: 'value',
-          subNamespace1: {
-            key: 'value',
-          },
-        },
+        namespace1_key: 'value',
+        namespace1_subNamespace1_key: 'value',
       };
 
       const result = toNamespace(state, namespace, subNamespace);
@@ -95,14 +98,19 @@ describe('Utility Functions', () => {
   });
 
   it('should be able to getRawState from a namespaced store', () => {
-    const subNamespace = createNamespace('subNamespace', () => ({
-      key: 'value',
-    }));
+    const subNamespace = createNamespace(
+      'subNamespace',
+      () => ({
+        key: 'value',
+      }),
+      { flatten: true }
+    );
     const namespace = createNamespace(
       'namespace',
       namespaced((state) => () => ({ key: 'value', ...state }), {
         namespaces: [subNamespace],
-      })
+      }),
+      { flatten: true }
     );
 
     const useStore = create(
@@ -121,40 +129,33 @@ describe('Utility Functions', () => {
     );
 
     expect(useNamespaceStore.getRawState()).toEqual({
-      namespace: {
-        key: 'value',
-        subNamespace: {
-          key: 'value',
-        },
-      },
+      namespace_key: 'value',
+      namespace_subNamespace_key: 'value',
     });
     expect(useSubNamespaceStore.getRawState()).toEqual({
-      namespace: {
-        subNamespace: {
-          key: 'value',
-        },
-      },
+      namespace_subNamespace_key: 'value',
     });
   });
 
   it('should be able to go to and from a namespace', () => {
-    const subNamespace = createNamespace('subNamespace', () => ({
-      key: 'value',
-    }));
+    const subNamespace = createNamespace(
+      'subNamespace',
+      () => ({
+        key: 'value',
+      }),
+      { flatten: true }
+    );
     const namespace = createNamespace(
       'namespace',
       namespaced((state) => () => ({ key: 'value', ...state }), {
         namespaces: [subNamespace],
-      })
+      }),
+      { flatten: true }
     );
 
     const state = {
-      namespace: {
-        key: 'value',
-        subNamespace: {
-          key: 'value',
-        },
-      },
+      namespace_key: 'value',
+      namespace_subNamespace_key: 'value',
     };
 
     const result = toNamespace(state, namespace, subNamespace);
@@ -164,23 +165,24 @@ describe('Utility Functions', () => {
       key: 'value',
     });
     expect(result2).toEqual({
-      namespace: {
-        subNamespace: {
-          key: 'value',
-        },
-      },
+      namespace_subNamespace_key: 'value',
     });
   });
 
   it('should be able to modify api methods with middleware', () => {
-    const subNamespace = createNamespace('subNamespace', () => ({
-      key: 'value',
-    }));
+    const subNamespace = createNamespace(
+      'subNamespace',
+      () => ({
+        key: 'value',
+      }),
+      { flatten: true }
+    );
     const namespace = createNamespace(
       'namespace',
       namespaced((state) => immer(() => ({ key: 'value', ...state })), {
         namespaces: [subNamespace],
-      })
+      }),
+      { flatten: true }
     );
 
     const useStore = create(
@@ -192,7 +194,7 @@ describe('Utility Functions', () => {
     );
 
     useStore.setState((state) => {
-      state.namespace.key = 'updated';
+      state.namespace_key = 'updated';
     });
 
     const { namespace: useNamespaceStore } = getNamespaceHooks(
@@ -217,20 +219,20 @@ describe('Utility Functions', () => {
     );
 
     expect(useNamespaceStore.getRawState()).toEqual({
-      namespace: {
-        key: 'updated',
-        subNamespace: {
-          key: 'updated',
-        },
-      },
+      namespace_key: 'updated',
+      namespace_subNamespace_key: 'updated',
     });
   });
 
   it('should replace state', () => {
-    const namespace = createNamespace('namespace', () => ({
-      key: 'value',
-      key2: 'value2',
-    }));
+    const namespace = createNamespace(
+      'namespace',
+      () => ({
+        key: 'value',
+        key2: 'value2',
+      }),
+      { flatten: true }
+    );
 
     const useStore = create(
       namespaced((state) => () => ({ key: 'value', ...state }), {
@@ -246,17 +248,13 @@ describe('Utility Functions', () => {
     //@ts-expect-error - setState with replace only accepts the whole state, but we are passing a partial state
     useNamespaceStore.setState({ key: 'updated' }, true);
     expect(useNamespaceStore.getRawState()).toEqual({
-      namespace: {
-        key: 'updated',
-      },
+      namespace_key: 'updated',
     });
     expect(useNamespaceStore.getState()).toEqual({
       key: 'updated',
     });
     expect(useStore.getState()).toEqual({
-      namespace: {
-        key: 'updated',
-      },
+      namespace_key: 'updated',
       key: 'value',
     });
   });

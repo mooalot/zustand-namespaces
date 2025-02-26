@@ -31,7 +31,10 @@ const subNamespace = createNamespace<SubNamespace1>()(
     updateSubNamespace1Data: (data) => set({ dataInSubNamespace1: data }),
     resetSubNamespace1Data: () =>
       set({ dataInSubNamespace1: 'Initial SubNamespace1 Data' }),
-  })
+  }),
+  {
+    flatten: true,
+  }
 );
 
 type Namespace1WithSubNamespace1 = Namespace1 &
@@ -51,15 +54,24 @@ const namespace1 = createNamespace<Namespace1WithSubNamespace1>()(
     {
       namespaces: [subNamespace],
     }
-  )
+  ),
+  {
+    flatten: true,
+  }
 );
 
-const namespace2 = createNamespace<Namespace2>()('namespace2', (set) => ({
-  dataInNamespace2: 'Initial Namespace2 Data',
-  updateNamespace2Data: (data) => set({ dataInNamespace2: data }),
-  resetNamespace2Data: () =>
-    set({ dataInNamespace2: 'Initial Namespace2 Data' }),
-}));
+const namespace2 = createNamespace<Namespace2>()(
+  'namespace2',
+  (set) => ({
+    dataInNamespace2: 'Initial Namespace2 Data',
+    updateNamespace2Data: (data) => set({ dataInNamespace2: data }),
+    resetNamespace2Data: () =>
+      set({ dataInNamespace2: 'Initial Namespace2 Data' }),
+  }),
+  {
+    flatten: true,
+  }
+);
 
 const namespaces = [namespace1, namespace2];
 type AppState = ExtractNamespaces<typeof namespaces>;
@@ -129,20 +141,12 @@ describe('Zustand Namespace Stores', () => {
 describe('Zustand Namespaces with Components', () => {
   const resetStore = () => {
     act(() => {
-      useStore.setState((state) => ({
-        namespace1: {
-          ...state.namespace1,
-          dataInNamespace1: 'Initial Namespace1 Data',
-          subNamespace1: {
-            ...state.namespace1.subNamespace1,
-            dataInSubNamespace1: 'Initial SubNamespace1 Data',
-          },
-        },
-        namespace2: {
-          ...state.namespace2,
-          dataInNamespace2: 'Initial Namespace2 Data',
-        },
-      }));
+      useStore.setState({
+        namespace1_dataInNamespace1: 'Initial Namespace1 Data',
+        namespace2_dataInNamespace2: 'Initial Namespace2 Data',
+        namespace1_subNamespace1_dataInSubNamespace1:
+          'Initial SubNamespace1 Data',
+      });
     });
   };
   afterEach(resetStore);
@@ -306,21 +310,12 @@ describe('Zustand Namespaces with Components', () => {
     );
 
     act(() => {
-      useStore.setState((state) => ({
-        ...state,
-        namespace1: {
-          ...state.namespace1,
-          dataInNamespace1: 'Initial Namespace1 Data',
-          subNamespace1: {
-            ...state.namespace1.subNamespace1,
-            dataInSubNamespace1: 'Initial SubNamespace1 Data',
-          },
-        },
-        namespace2: {
-          ...state.namespace2,
-          dataInNamespace2: 'Initial Namespace2 Data',
-        },
-      }));
+      useStore.setState({
+        namespace1_dataInNamespace1: 'Initial Namespace1 Data',
+        namespace2_dataInNamespace2: 'Initial Namespace2 Data',
+        namespace1_subNamespace1_dataInSubNamespace1:
+          'Initial SubNamespace1 Data',
+      });
     });
     expect(screen.getByTestId('namespace1-data')).toHaveTextContent(
       'Initial Namespace1 Data'

@@ -35,7 +35,7 @@ function getNamespacedApi<
           namespace.options?.separator ?? '_'
         );
       } else {
-        return (api.getInitialState() as any)[namespace.name] ?? {};
+        return (api.getInitialState() as any)?.[namespace.name] ?? {};
       }
     },
     getState: () => {
@@ -46,7 +46,7 @@ function getNamespacedApi<
           namespace.options?.separator ?? '_'
         );
       } else {
-        return (api.getState() as any)[namespace.name] ?? {};
+        return (api.getState() as any)?.[namespace.name] ?? {};
       }
     },
     setState: (state, replace) => {
