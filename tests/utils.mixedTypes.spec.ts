@@ -2,29 +2,31 @@ import { expectType } from 'ts-expect';
 import { describe } from 'vitest';
 
 import { create } from 'zustand';
-import { createNamespace, namespaced } from '../src/utils';
-
-type Namespace1 = {
-  data: string;
-};
-
-type Namespace2 = {
-  data: string;
-};
+import { createNamespace, getNamespaceHooks, namespaced } from '../src/utils';
 
 describe('Mixed types', () => {
   it('should work with mixed types', () => {
-    const namespace1 = createNamespace<Namespace1>()(
+    const subNamespace = createNamespace('subNamespace', () => ({
+      data: 'Initial SubNamespace Data',
+    }));
+
+    const namespace1 = createNamespace(
       'namespace1',
-      () => ({
-        data: 'Initial Data',
-      }),
+      namespaced(
+        (state) => () => ({
+          data: 'Initial Data',
+          ...state,
+        }),
+        {
+          namespaces: [subNamespace],
+        }
+      ),
       {
         flatten: true,
       }
     );
 
-    const namespace2 = createNamespace<Namespace2>()('namespace2', () => ({
+    const namespace2 = createNamespace('namespace2', () => ({
       data: 'Initial Data',
     }));
 
@@ -43,7 +45,22 @@ describe('Mixed types', () => {
     expectType<{
       data: string;
       namespace1_data: string;
+      namespace1_subNamespace: { data: string };
       namespace2: { data: string };
     }>(store.getState());
+
+    const { namespace1: useNamespace1, namespace2: useNamespace2 } =
+      getNamespaceHooks(store, namespace1, namespace2);
+
+    expectType<string>(useNamespace1.getState().data);
+    expectType<string>(useNamespace1.getState().subNamespace.data);
+    expectType<string>(useNamespace2.getState().data);
+
+    const { subNamespace: useSubNamespace } = getNamespaceHooks(
+      useNamespace1,
+      subNamespace
+    );
+
+    expectType<string>(useSubNamespace.getState().data);
   });
 });

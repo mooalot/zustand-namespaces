@@ -3,22 +3,30 @@ import { describe } from 'vitest';
 
 import { create } from 'zustand';
 import { createNamespace, namespaced } from '../src/utils';
+import { persist } from 'zustand/middleware';
+import { temporal } from 'zundo';
 
 describe('Mixed types', () => {
   it('should work with mixed types', () => {
     const namespace1 = createNamespace(
       'namespace1',
-      () => ({
-        data: 'Initial Data',
-      }),
+      persist(
+        () => ({
+          data: 'Initial Data',
+        }),
+        { name: 'namespace1' }
+      ),
       {
         flatten: true,
       }
     );
 
-    const namespace2 = createNamespace('namespace2', () => ({
-      data: 'Initial Data',
-    }));
+    const namespace2 = createNamespace(
+      'namespace2',
+      temporal(() => ({
+        data: 'Initial Data',
+      }))
+    );
 
     const store = create(
       namespaced(
