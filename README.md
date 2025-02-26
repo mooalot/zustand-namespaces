@@ -87,7 +87,7 @@ This approach is a good choice when you want to keep your state structure clean 
 
 ### Flattened
 
-This approach flattens all namespaces into a single object.
+This approach flattens your namespace into the parent object.
 
 ```javascript
 {
