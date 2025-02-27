@@ -24,13 +24,9 @@ export default defineConfig({
         globals: {}, // Global variables for external dependencies
       },
     },
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true, // Removes all console.log statements
-        drop_debugger: true, // Removes debugger statements
-      },
-    },
+  },
+  esbuild: {
+    drop: ['console', 'debugger'],
   },
 
   test: {
