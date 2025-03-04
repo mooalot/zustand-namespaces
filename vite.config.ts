@@ -25,13 +25,15 @@ export default defineConfig({
       },
     },
   },
-  esbuild: {
-    drop: ['console', 'debugger'],
-  },
+  esbuild:
+    process.env.NODE_ENV === 'production'
+      ? { drop: ['console', 'debugger'] }
+      : {},
 
   test: {
     environment: 'jsdom', // Required for React testing
     globals: true, // Allows using `test`, `expect` globally
-    setupFiles: 'tests/vitest.setup.ts', // Path to your setup file
+    setupFiles: 'tests/vitest.setup.ts', // Path to your setup file,
+    silent: false, // Suppresses console output
   },
 });

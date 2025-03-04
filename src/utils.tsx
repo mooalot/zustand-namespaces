@@ -322,7 +322,8 @@ function getOneNamespaceHook<
   >;
   const hook = ((selector) => {
     return useStore((state) => {
-      return selector(toNamespace(state, namespace) as any);
+      const namespaceState = toNamespace(state, namespace);
+      return selector ? selector(namespaceState) : namespaceState;
     });
   }) as BoundStore;
 
@@ -425,7 +426,6 @@ function getRootApi<Store extends object>(
 ): WithNames<StoreApi<Store>> {
   const originalSet = api.setState;
   const setState: StoreApi<Store>['setState'] = (state, replace) => {
-    console.log('setState', state);
     api._payload = {};
 
     const currentState = api.getState();
@@ -477,7 +477,6 @@ function getRootApi<Store extends object>(
     callSetOnNamespaces(newState, api.namespaces);
 
     const payload = api._payload;
-    console.log('payload', payload);
 
     // merge the remaining keys that were not applied to the namespaces and the payload from the namespaces
     originalSet(
