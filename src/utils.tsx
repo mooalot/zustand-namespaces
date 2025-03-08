@@ -62,7 +62,7 @@ function getNamespacedApi<
             apiCurrentState,
             namespace.options?.separator ?? '_'
           )
-        : (apiCurrentState as any)[namespace.name] ?? {};
+        : (apiCurrentState as any)?.[namespace.name] ?? {};
       const updatedState =
         typeof state === 'function' ? (state as any)(currentState) : state;
 
@@ -478,7 +478,6 @@ function getRootApi<Store extends object>(
 
     const payload = api._payload;
 
-    // merge the remaining keys that were not applied to the namespaces and the payload from the namespaces
     originalSet(
       {
         ...newState,
@@ -486,7 +485,6 @@ function getRootApi<Store extends object>(
       },
       replace as any
     );
-    // remove the payload so that it is not applied again
     delete api._payload;
   };
 

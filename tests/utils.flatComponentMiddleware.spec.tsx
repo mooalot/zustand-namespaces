@@ -1,11 +1,32 @@
 import '@testing-library/jest-dom';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
-import { afterEach, expect, test, describe } from 'vitest';
+import { afterEach, describe, expect, test } from 'vitest';
 import { temporal } from 'zundo';
 import { create } from 'zustand';
 import { createJSONStorage, persist, StateStorage } from 'zustand/middleware';
-import { createNamespace, namespaced, getNamespaceHooks } from '../src/utils';
+import { createNamespace, getNamespaceHooks, namespaced } from '../src/utils';
+
+function createStorage() {
+  const storage: { [key: string]: string } = {};
+
+  const storageImplementation: StateStorage = {
+    getItem: (name) => {
+      return storage[name];
+    },
+    setItem: (name, value) => {
+      storage[name] = value;
+    },
+    removeItem: (name) => {
+      delete storage[name];
+    },
+  };
+
+  return {
+    storage,
+    storageImplementation,
+  };
+}
 
 const storage: { [key: string]: string } = {};
 
@@ -130,7 +151,7 @@ const App = () => {
 afterEach(cleanup);
 
 describe('Zustand Namespace Stores', () => {
-  test('should have namespace1 methods in useStore', () => {
+  test('should have namespace1 methoßds in useStore', () => {
     Object.keys(useStore).forEach((key) => {
       if (key === 'namespaces') return;
       expect(key in useNamespace1).toBeTruthy();
@@ -354,7 +375,7 @@ describe('Zustand Namespaces with Components', () => {
 
 describe('nested: Zustand Namespaces', () => {
   test('nested: should be able to store data with persist and create a new store with that same data if it uses the same name', () => {
-    console.log('start');
+    const { storage, storageImplementation } = createStorage();
     const namespace = createNamespace<{
       data: string;
     }>()(
@@ -382,7 +403,6 @@ describe('nested: Zustand Namespaces', () => {
       useNamespace.setState({ data: 'New Namespace Data' });
     });
 
-    console.log('storage', storage);
     // check t omake sure the data is set in storage
     expect(JSON.parse(storage['nested'])).toEqual({
       state: { data: 'New Namespace Data' },
@@ -396,7 +416,6 @@ describe('nested: Zustand Namespaces', () => {
       })
     );
 
-    console.log('storage', storage);
     // check to make sure the data is still there
     expect(JSON.parse(storage['nested'])).toEqual({
       state: { data: 'New Namespace Data' },
@@ -408,5 +427,66 @@ describe('nested: Zustand Namespaces', () => {
 
     // check to make sure the data is still there
     expect(useNamespace.getState().data).toBe('New Namespace Data');
+  });
+
+  test('nested: should be able to store data with persist and create a new store with that same data from a substore', () => {
+    const { storage, storageImplementation } = createStorage();
+    const subNamespace = createNamespace(
+      'subNamespace',
+      () => ({
+        data: 'hi',
+      }),
+      {
+        flatten: true,
+      }
+    );
+
+    const namespace = createNamespace(
+      'namespace',
+      namespaced(
+        (state) =>
+          persist(
+            () => ({
+              ...state,
+              data: 'hi',
+            }),
+            {
+              name: 'namespace',
+              storage: createJSONStorage(() => storageImplementation),
+            }
+          ),
+        {
+          namespaces: [subNamespace],
+        }
+      ),
+      {
+        flatten: true,
+      }
+    );
+    let store = create(
+      namespaced({
+        namespaces: [namespace],
+      })
+    );
+
+    let { namespace: useNamespace } = getNamespaceHooks(store, namespace);
+    let { subNamespace: useSubNamespace } = getNamespaceHooks(
+      useNamespace,
+      subNamespace
+    );
+
+    // set data in namespace
+    act(() => {
+      useSubNamespace.setState({ data: 'New SubNamespace Data' });
+    });
+
+    expect(useSubNamespace.getState().data).toBe('New SubNamespace Data');
+
+    // check t omake sure the data is set in storage
+
+    expect(JSON.parse(storage['namespace'])).toEqual({
+      state: { data: 'hi', subNamespace_data: 'New SubNamespace Data' },
+      version: 0,
+    });
   });
 });
