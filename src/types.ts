@@ -16,7 +16,8 @@ declare module 'zustand/vanilla' {
 export type WithNames<T> = T & {
   namespaces: any;
   namespacePath?: Namespace<any, any, any, any, any, any>[];
-  _payload?: any;
+  _traversed?: boolean;
+  _payloadByNamespace?: Record<string, any>;
 };
 
 export type ExtractNamespace<T> = T extends Namespace<

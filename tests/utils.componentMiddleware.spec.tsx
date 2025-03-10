@@ -368,7 +368,6 @@ describe('Zustand Namespaces with Components', () => {
 
 describe('nested: Zustand Namespaces', () => {
   test('nested: should be able to store data with persist and create a new store with that same data if it uses the same name', () => {
-    console.log('start');
     const namespace = createNamespace<{
       data: string;
     }>()(
@@ -396,7 +395,6 @@ describe('nested: Zustand Namespaces', () => {
       useNamespace.setState({ data: 'New Namespace Data' });
     });
 
-    console.log('storage', storage);
     // check t omake sure the data is set in storage
     expect(JSON.parse(storage['nested'])).toEqual({
       state: { data: 'New Namespace Data' },
@@ -410,7 +408,6 @@ describe('nested: Zustand Namespaces', () => {
       })
     );
 
-    console.log('storage', storage);
     // check to make sure the data is still there
     expect(JSON.parse(storage['nested'])).toEqual({
       state: { data: 'New Namespace Data' },
