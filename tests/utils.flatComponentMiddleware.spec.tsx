@@ -714,10 +714,14 @@ describe('complex persist', () => {
       persist(
         () => ({
           count: 0,
+          count2: 0,
         }),
         {
           name: 'subNamespace',
           storage: createJSONStorage(() => storageImplementation),
+          partialize: (state) => ({
+            count: state.count,
+          }),
         }
       ),
       {
@@ -730,10 +734,14 @@ describe('complex persist', () => {
       persist(
         () => ({
           foo: 'bar',
+          bar: 'foo',
         }),
         {
           name: 'subNamespace2',
           storage: createJSONStorage(() => storageImplementation),
+          partialize: (state) => ({
+            foo: state.foo,
+          }),
         }
       ),
       {
@@ -785,6 +793,9 @@ describe('complex persist', () => {
     );
 
     expect(useStore.getState().namespace_subNamespace_count).toBe(1);
+    expect(useStore.getState().namespace_subNamespace_count2).toBe(0);
+    expect(useStore.getState().namespace_subNamespace2_foo).toBe('bar');
+    expect(useStore.getState().namespace_subNamespace2_bar).toBe('foo');
     expect(useStore.getState().namespace_byStander).toBe('hi');
 
     const { namespace: useNamespace } = getNamespaceHooks(useStore, namespace);

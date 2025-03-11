@@ -438,7 +438,7 @@ describe('nested: Zustand Namespaces', () => {
 
     // check t omake sure the data is set in storage
     expect(JSON.parse(storage['namespace'])).toEqual({
-      state: { subNamespace: { data: 'New SubNamespace Data' } },
+      state: { subNamespace: { data: 'New SubNamespace Data' }, data: 'hi' },
       version: 0,
     });
 
@@ -451,7 +451,7 @@ describe('nested: Zustand Namespaces', () => {
 
     // check to make sure the data is still there
     expect(JSON.parse(storage['namespace'])).toEqual({
-      state: { subNamespace: { data: 'New SubNamespace Data' } },
+      state: { subNamespace: { data: 'New SubNamespace Data' }, data: 'hi' },
       version: 0,
     });
 

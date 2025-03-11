@@ -42,10 +42,22 @@ function getNamespacedApi<
       /**
        * If the payload exists for a namespace, we are in the process of setting the state.
        * We return the payload so that if any middleware uses getState during the setState call, it will get the correct state.
+       * if its initializing and there is no data, return undefined
        */
       const payload = api._payloadByNamespace?.[namespace.name];
       if (payload) return payload;
-      else return toNamespace(api.getState(), namespace);
+      else {
+        const data = toNamespace(api.getState(), namespace);
+        if (
+          api._initializing &&
+          !!data &&
+          Object.keys(data as any).length === 0
+        ) {
+          return undefined;
+        } else {
+          return data;
+        }
+      }
     },
     setState: (state, replace) => {
       namespacedApi._traversed = true; //payload isnt used, but stops namespaces from being traveresd too many times
@@ -450,8 +462,9 @@ function getRootApi<Store extends object>(
       const namespaceApi = namespaces[name];
       const nextNamespace = namespaceApi.namespacePath?.slice(-1)[0];
       if (!nextNamespace) throw new Error('Namespace not found');
+      const currentNamespaceState = toNamespace(currentState, nextNamespace);
       Object.assign(api._payloadByNamespace, {
-        [name]: toNamespace(currentState, nextNamespace),
+        [name]: currentNamespaceState,
       });
       // break if there are not more keys to apply
       if (Object.keys(newState).length === 0) break;
@@ -506,6 +519,7 @@ export const namespaced = ((one?: any, two?: any) => {
     ) => {
       const apiWithNamespaces = Object.assign(api, {
         namespaces: {},
+        _initializing: true,
       });
 
       const rootApi = getRootApi(apiWithNamespaces);
@@ -516,6 +530,7 @@ export const namespaced = ((one?: any, two?: any) => {
           transformCallback(rootApi.setState, rootApi.getState, rootApi)
         ),
       };
+      delete rootApi._initializing;
       return data;
     };
   } else {
@@ -530,15 +545,18 @@ export const namespaced = ((one?: any, two?: any) => {
     ) => {
       const apiWithNamespaces = Object.assign(api, {
         namespaces: {},
+        _initializing: true,
       });
 
       const rootApi = getRootApi(apiWithNamespaces);
-      return callback(
+      const data = callback(
         spreadNamespaces(
           namespaces,
           transformCallback(rootApi.setState, rootApi.getState, rootApi)
         )
       )(rootApi.setState, rootApi.getState, rootApi);
+      delete rootApi._initializing;
+      return data;
     };
   }
 }) as Namespaced;

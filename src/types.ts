@@ -18,6 +18,7 @@ export type WithNames<T> = T & {
   namespacePath?: Namespace<any, any, any, any, any, any>[];
   _traversed?: boolean;
   _payloadByNamespace?: Record<string, any>;
+  _initializing?: boolean;
 };
 
 export type ExtractNamespace<T> = T extends Namespace<
