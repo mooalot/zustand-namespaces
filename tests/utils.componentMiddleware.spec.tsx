@@ -8,6 +8,27 @@ import { createJSONStorage, persist, StateStorage } from 'zustand/middleware';
 import { createNamespace, namespaced, getNamespaceHooks } from '../src/utils';
 import { ExtractNamespace } from '../src/types';
 
+function createStorage() {
+  const storage: { [key: string]: string } = {};
+
+  const storageImplementation: StateStorage = {
+    getItem: (name) => {
+      return storage[name];
+    },
+    setItem: (name, value) => {
+      storage[name] = value;
+    },
+    removeItem: (name) => {
+      delete storage[name];
+    },
+  };
+
+  return {
+    storage,
+    storageImplementation,
+  };
+}
+
 const storage: { [key: string]: string } = {};
 
 const storageImplementation: StateStorage = {
@@ -368,17 +389,26 @@ describe('Zustand Namespaces with Components', () => {
 
 describe('nested: Zustand Namespaces', () => {
   test('nested: should be able to store data with persist and create a new store with that same data if it uses the same name', () => {
-    const namespace = createNamespace<{
-      data: string;
-    }>()(
-      'nested',
-      persist(
-        () => ({
-          data: 'hi',
-        }),
+    const { storage, storageImplementation } = createStorage();
+    const subNamespace = createNamespace('subNamespace', () => ({
+      data: 'hi',
+    }));
+    const namespace = createNamespace(
+      'namespace',
+      namespaced(
+        (state) =>
+          persist(
+            () => ({
+              data: 'hi',
+              ...state,
+            }),
+            {
+              name: 'namespace',
+              storage: createJSONStorage(() => storageImplementation),
+            }
+          ),
         {
-          name: 'nested',
-          storage: createJSONStorage(() => storageImplementation),
+          namespaces: [subNamespace],
         }
       )
     );
@@ -388,16 +418,27 @@ describe('nested: Zustand Namespaces', () => {
       })
     );
 
-    let { nested: useNamespace } = getNamespaceHooks(store, namespace);
+    let { namespace: useNamespace } = getNamespaceHooks(store, namespace);
+    let { subNamespace: useSubNamespace } = getNamespaceHooks(
+      useNamespace,
+      subNamespace
+    );
 
     // set data in namespace
     act(() => {
-      useNamespace.setState({ data: 'New Namespace Data' });
+      store.setState((state) => ({
+        namespace: {
+          ...state.namespace,
+          subNamespace: {
+            data: 'New SubNamespace Data',
+          },
+        },
+      }));
     });
 
     // check t omake sure the data is set in storage
-    expect(JSON.parse(storage['nested'])).toEqual({
-      state: { data: 'New Namespace Data' },
+    expect(JSON.parse(storage['namespace'])).toEqual({
+      state: { subNamespace: { data: 'New SubNamespace Data' } },
       version: 0,
     });
 
@@ -409,15 +450,19 @@ describe('nested: Zustand Namespaces', () => {
     );
 
     // check to make sure the data is still there
-    expect(JSON.parse(storage['nested'])).toEqual({
-      state: { data: 'New Namespace Data' },
+    expect(JSON.parse(storage['namespace'])).toEqual({
+      state: { subNamespace: { data: 'New SubNamespace Data' } },
       version: 0,
     });
 
     // get the hook for the new store
-    ({ nested: useNamespace } = getNamespaceHooks(store, namespace));
+    ({ namespace: useNamespace } = getNamespaceHooks(store, namespace));
+    ({ subNamespace: useSubNamespace } = getNamespaceHooks(
+      useNamespace,
+      subNamespace
+    ));
 
     // check to make sure the data is still there
-    expect(useNamespace.getState().data).toBe('New Namespace Data');
+    expect(useSubNamespace.getState().data).toBe('New SubNamespace Data');
   });
 });

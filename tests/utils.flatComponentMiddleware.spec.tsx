@@ -5,6 +5,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { temporal } from 'zundo';
 import { create } from 'zustand';
 import { createJSONStorage, persist, StateStorage } from 'zustand/middleware';
+import { ExtractNamespace } from '../src/types';
 import { createNamespace, getNamespaceHooks, namespaced } from '../src/utils';
 
 function createStorage() {
@@ -575,5 +576,231 @@ describe('nested: Zustand Namespaces', () => {
     ));
 
     expect(useSubNamespace.getState().data).toBe('New SubNamespace Data');
+  });
+});
+
+describe('Zustand test', () => {
+  test('should be able to persist a store', () => {
+    const { storage, storageImplementation } = createStorage();
+
+    storage['persist'] = JSON.stringify({
+      state: {
+        count: 1,
+      },
+      version: 0,
+    });
+
+    const store = create(
+      persist(
+        () => ({
+          count: 0,
+          test: 'hi',
+        }),
+        {
+          name: 'persist',
+          storage: createJSONStorage(() => storageImplementation),
+          partialize: (state) => ({
+            count: state.count,
+          }),
+        }
+      )
+    );
+
+    expect(store.getState().count).toBe(1);
+    expect(store.getState().test).toBe('hi');
+  });
+});
+
+describe('complex persist', () => {
+  /**
+   * This is a current limitation (that idk how to solve) of the persist middleware. There are workarounds because we can persist namespaces in parallel
+   * rather than in series. This is a limitation of the way persist works.
+   */
+  test(
+    'series persist should fail',
+    {
+      fails: true,
+    },
+    () => {
+      const { storage, storageImplementation } = createStorage();
+      const subNamespace = createNamespace(
+        'subNamespace',
+        () => ({
+          count: 0,
+        }),
+        {
+          flatten: true,
+        }
+      );
+
+      const subNamespace2 = createNamespace(
+        'subNamespace2',
+        persist(
+          () => ({
+            foo: 'bar',
+          }),
+          {
+            name: 'subNamespace2',
+            storage: createJSONStorage(() => storageImplementation),
+          }
+        ),
+        {
+          flatten: true,
+        }
+      );
+
+      const namespace = createNamespace(
+        'namespace',
+        namespaced(
+          (state) =>
+            persist(
+              () => ({
+                ...state,
+                byStander: 'hi',
+              }),
+              {
+                name: 'namespace',
+                storage: createJSONStorage(() => storageImplementation),
+                partialize: (state) => ({
+                  subNamespace_count: state.subNamespace_count,
+                }),
+              }
+            ),
+          {
+            namespaces: [subNamespace, subNamespace2],
+          }
+        ),
+        {
+          flatten: true,
+        }
+      );
+
+      type AppState = ExtractNamespace<typeof namespace>;
+
+      storage['namespace'] = JSON.stringify({
+        state: {
+          subNamespace_count: 1,
+        },
+        version: 0,
+      });
+
+      storage['subNamespace2'] = JSON.stringify({
+        state: {
+          foo: 'bar',
+        },
+        version: 0,
+      });
+
+      const useStore = create<AppState>()(
+        namespaced(
+          (state) => () => ({
+            ...state,
+          }),
+          {
+            namespaces: [namespace],
+          }
+        )
+      );
+
+      expect(useStore.getState().namespace_subNamespace_count).toBe(1);
+      expect(useStore.getState().namespace_byStander).toBe('hi');
+    }
+  );
+
+  test('parallel persist', () => {
+    const { storage, storageImplementation } = createStorage();
+    const subNamespace = createNamespace(
+      'subNamespace',
+      persist(
+        () => ({
+          count: 0,
+        }),
+        {
+          name: 'subNamespace',
+          storage: createJSONStorage(() => storageImplementation),
+        }
+      ),
+      {
+        flatten: true,
+      }
+    );
+
+    const subNamespace2 = createNamespace(
+      'subNamespace2',
+      persist(
+        () => ({
+          foo: 'bar',
+        }),
+        {
+          name: 'subNamespace2',
+          storage: createJSONStorage(() => storageImplementation),
+        }
+      ),
+      {
+        flatten: true,
+      }
+    );
+
+    const namespace = createNamespace(
+      'namespace',
+      namespaced(
+        (state) => () => ({
+          ...state,
+          byStander: 'hi',
+        }),
+        {
+          namespaces: [subNamespace, subNamespace2],
+        }
+      ),
+      {
+        flatten: true,
+      }
+    );
+
+    type AppState = ExtractNamespace<typeof namespace>;
+
+    storage['subNamespace'] = JSON.stringify({
+      state: {
+        count: 1,
+      },
+      version: 0,
+    });
+
+    storage['subNamespace2'] = JSON.stringify({
+      state: {
+        foo: 'bar',
+      },
+      version: 0,
+    });
+
+    const useStore = create<AppState>()(
+      namespaced(
+        (state) => () => ({
+          ...state,
+        }),
+        {
+          namespaces: [namespace],
+        }
+      )
+    );
+
+    expect(useStore.getState().namespace_subNamespace_count).toBe(1);
+    expect(useStore.getState().namespace_byStander).toBe('hi');
+
+    const { namespace: useNamespace } = getNamespaceHooks(useStore, namespace);
+    const { subNamespace: useSubNamespace } = getNamespaceHooks(
+      useNamespace,
+      subNamespace
+    );
+
+    expect(useSubNamespace.getState().count).toBe(1);
+
+    // set data in namespace
+    act(() => {
+      useSubNamespace.setState({ count: 2 });
+    });
+
+    expect(useSubNamespace.getState().count).toBe(2);
+    expect(useNamespace.getState().byStander).toBe('hi');
   });
 });

@@ -107,6 +107,72 @@ Zustand Namespaces is fully typed for better state safety. See the [examples](ht
 
 Integrates with any Zustand middleware. See the [example](https://github.com/mooalot/zustand-namespaces/blob/main/examples/namespacesWithMiddleware.ts) for usage.
 
+### Gotchas
+
+Due to the way some middleware was written, it may not work as expected with Zustand Namespaces. When in doubt, try the middleware in parallel rather than in series.
+The flexibility of Zustand Namespaces allows for middleware to be written in parallel with no drawbacks.
+
+Here is an example of the `persist` middleware that works in parallel and not in series:
+
+✅`persist` in parallel✅
+
+```javascript
+const subNamespace = createNamespace(
+  'subNamespace',
+  persist(() => ({ foo: 'bar' }), { name: 'subNamespace' })
+);
+
+const subNamespace2 = createNamespace(
+  'subNamespace2',
+  persist(() => ({ data: 'hi' }), { name: 'subNamespace2' })
+);
+const namespace = createNamespace(
+  'namespace',
+  namespaced(
+    (namespacedState) => () => ({
+      ...namespacedState,
+    }),
+    {
+      namespaces: [subNamespace, subNamespace2],
+    }
+  )
+);
+
+const useStore = create(namespaced({ namespaces: [namespace] }));
+```
+
+🛑`persist` in series🛑
+
+```javascript
+const subNamespace = createNamespace(
+  'subNamespace',
+  persist(() => ({ foo: 'bar' }), { name: 'subNamespace' })
+);
+const namespace = createNamespace(
+  'namespace',
+  namespaced(
+    (namespacedState) =>
+      persist(
+        () => ({
+          data: 'hi',
+          ...namespacedState,
+        }),
+        {
+          name: 'namespace',
+          partialize: (state) => ({ data: state.data }),
+        }
+      ),
+    {
+      namespaces: [subNamespace],
+    }
+  )
+);
+
+const useStore = create(namespaced({ namespaces: [namespace] }));
+```
+
+Not all middleware will have this issue, but it is something to be aware of when using Zustand Namespaces.
+
 ## Additional Examples
 
 More examples can be found in the [examples directory](https://github.com/mooalot/zustand-namespaces/tree/main/examples), covering various use cases including third-party integrations.

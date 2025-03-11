@@ -408,6 +408,10 @@ export const createNamespace = ((one?: any, two?: any, options?: any) => {
   }
 }) as CreateNamespace;
 
+// function namespacePathToString(api: WithNames<StoreApi<any>>) {
+//   return api.namespacePath?.map((n) => n.name).join('/') ?? 'Root';
+// }
+
 /**
  * This is where the fun middleware stuff happens.
  * We override the setState method with a method that will go through its namespaced children. We add
@@ -529,14 +533,12 @@ export const namespaced = ((one?: any, two?: any) => {
       });
 
       const rootApi = getRootApi(apiWithNamespaces);
-      return {
-        ...callback(
-          spreadNamespaces(
-            namespaces,
-            transformCallback(rootApi.setState, rootApi.getState, rootApi)
-          )
-        )(rootApi.setState, rootApi.getState, rootApi),
-      };
+      return callback(
+        spreadNamespaces(
+          namespaces,
+          transformCallback(rootApi.setState, rootApi.getState, rootApi)
+        )
+      )(rootApi.setState, rootApi.getState, rootApi);
     };
   }
 }) as Namespaced;
