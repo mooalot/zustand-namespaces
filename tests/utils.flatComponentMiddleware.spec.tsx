@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist, StateStorage } from 'zustand/middleware';
 import { ExtractNamespace } from '../src/types';
 import { createNamespace, getNamespaceHooks, namespaced } from '../src/utils';
+import { immer } from 'zustand/middleware/immer';
 
 function createStorage() {
   const storage: { [key: string]: string } = {};
@@ -813,5 +814,98 @@ describe('complex persist', () => {
 
     expect(useSubNamespace.getState().count).toBe(2);
     expect(useNamespace.getState().byStander).toBe('hi');
+  });
+});
+
+describe('immer', () => {
+  test('should be able to use immer with zustand', () => {
+    type NamespaceState = {
+      count: number;
+      increment: () => void;
+    };
+    const namespace = createNamespace<NamespaceState>()(
+      'namespace',
+      immer((set) => ({
+        count: 0,
+        increment: () =>
+          set((state) => {
+            state.count += 1;
+          }),
+      })),
+      {
+        flatten: true,
+      }
+    );
+
+    const useStore = create(
+      namespaced((state) => () => ({ ...state }), {
+        namespaces: [namespace],
+      })
+    );
+    const { namespace: useNamespace } = getNamespaceHooks(useStore, namespace);
+    expect(useNamespace.getState().count).toBe(0);
+    act(() => {
+      useNamespace.getState().increment();
+    });
+    expect(useNamespace.getState().count).toBe(1);
+    act(() => {
+      useStore.getState().namespace_increment();
+    });
+    expect(useNamespace.getState().count).toBe(2);
+  });
+
+  test('should be able to use immer if its on root store', () => {
+    type NamespaceState = {
+      count: number;
+      increment: () => void;
+    };
+    const namespace = createNamespace<NamespaceState>()(
+      'namespace',
+      immer((set) => ({
+        count: 0,
+        increment: () =>
+          set((state) => {
+            state.count += 1;
+          }),
+      })),
+      {
+        flatten: true,
+      }
+    );
+
+    type RootState = ExtractNamespace<typeof namespace> & {
+      increment: () => void;
+    };
+
+    const useStore = create<RootState>()(
+      immer(
+        namespaced(
+          (state) => (set) => ({
+            ...state,
+            increment: () =>
+              set((state) => {
+                state.namespace_count += 1;
+              }),
+          }),
+          { namespaces: [namespace] }
+        )
+      )
+    );
+    const { namespace: useNamespace } = getNamespaceHooks(useStore, namespace);
+    expect(useNamespace.getState().count).toBe(0);
+    act(() => {
+      useNamespace.getState().increment();
+    });
+    expect(useNamespace.getState().count).toBe(1);
+    act(() => {
+      useStore.getState().namespace_increment();
+    });
+
+    expect(useNamespace.getState().count).toBe(2);
+    act(() => {
+      useStore.getState().increment();
+    });
+    expect(useNamespace.getState().count).toBe(3);
+    expect(useStore.getState().namespace_count).toBe(3);
   });
 });
