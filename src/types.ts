@@ -258,7 +258,7 @@ export type CreateNamespace = {
     Separator extends string = '_'
   >(
     name: Name,
-    creator: StateCreator<T, Mps, Mcs, T>,
+    creator: StateCreator<T, [], Mcs, T>,
     options?: NamespaceOptions<Flatten, Separator>
   ): Namespace<T, Name, Mps, Mcs, Flatten, Separator>;
   // explicit
@@ -270,7 +270,7 @@ export type CreateNamespace = {
     Separator extends string = '_'
   >(
     name: Name,
-    creator: StateCreator<T, Mps, Mcs>,
+    creator: StateCreator<T, [], Mcs>,
     options?: NamespaceOptions<Flatten, Separator>
   ) => Namespace<T, Name, Mps, Mcs, Flatten, Separator>;
 };

@@ -4,7 +4,7 @@ import { describe, expect, test } from 'vitest';
 
 import { temporal, TemporalState } from 'zundo';
 import { create, StateCreator, StoreApi, UseBoundStore } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { combine, devtools, persist } from 'zustand/middleware';
 import {
   ExtractNamespace,
   FilterByPrefix,
@@ -19,6 +19,7 @@ import {
   toNamespace,
   transformStateCreatorArgs,
 } from '../src/utils';
+import { immer } from 'zustand/middleware/immer';
 
 type State = {
   user: {
@@ -435,5 +436,65 @@ describe('createNamespace', () => {
         [typeof namespace, typeof subNamespace]
       >
     >(useSubNamespace);
+  });
+
+  test('should allow nested stuff', () => {
+    interface ExampleState {
+      title: string;
+      subtitle: string | undefined;
+    }
+
+    interface ExampleActions {
+      setHeaderTitle: (title: string) => void;
+      setHeaderSubtitle: (subtitle: string) => void;
+    }
+
+    const initialState: ExampleState = {
+      title: '',
+      subtitle: undefined,
+    };
+
+    const createExampleSlice = createNamespace<ExampleState & ExampleActions>()(
+      'exampleSlice',
+      devtools(
+        immer(
+          combine(
+            initialState, // initial state
+            (set) => ({
+              setHeaderTitle: (title: string) =>
+                set(
+                  (state) => {
+                    state.title = title;
+                  },
+                  undefined,
+                  'Set header title'
+                ),
+              setHeaderSubtitle: (subtitle: string) =>
+                set(
+                  (state) => {
+                    state.subtitle = subtitle;
+                  },
+                  undefined,
+                  'Set header title'
+                ),
+            })
+          )
+        ),
+        {
+          storeName: 'exampleSlice',
+        }
+      )
+    );
+
+    create(
+      namespaced(
+        (namespacedState) => () => ({
+          ...namespacedState,
+        }),
+        {
+          namespaces: [createExampleSlice],
+        }
+      )
+    );
   });
 });
