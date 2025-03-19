@@ -182,31 +182,39 @@ export function getPrefixedObject<
   T extends string,
   O extends object,
   S extends string
->(typePrefix: T, obj: O | undefined, separator: S) {
-  if (!obj) return undefined as unknown as PrefixObject<T, O, S>;
-  return Object.entries(obj).reduce((acc, [key, value]) => {
-    return {
-      ...acc,
-      [`${typePrefix}${separator}${key}`]: value,
-    };
-  }, {} as PrefixObject<T, O, S>);
+>(typePrefix: T, obj: O | undefined, separator: S): PrefixObject<T, O, S> {
+  if (!obj || typeof obj !== 'object') return obj as any;
+
+  const prefix = typePrefix + separator;
+
+  const result = {} as any;
+  for (const key of Object.keys(obj)) {
+    result[prefix + key] = (obj as any)[key];
+  }
+  return result;
 }
 
 export function getUnprefixedObject<
   T extends string,
   Data extends object,
   S extends string
->(typePrefix: T, obj: Data | undefined, separator: S) {
-  if (!obj) return undefined as unknown as FilterByPrefix<T, Data, S>;
-  return Object.entries(obj).reduce((acc, [key, value]) => {
-    if (key.startsWith(`${typePrefix}${separator}`)) {
-      return {
-        ...acc,
-        [key.slice(typePrefix.length + 1)]: value,
-      };
+>(
+  typePrefix: T,
+  obj: Data | undefined,
+  separator: S
+): FilterByPrefix<T, Data, S> {
+  if (!obj || typeof obj !== 'object') return obj as any;
+
+  const result: any = {};
+  const prefix = typePrefix + separator;
+  const prefixLength = prefix.length;
+
+  for (const key of Object.keys(obj)) {
+    if (key.startsWith(prefix)) {
+      result[key.slice(prefixLength)] = (obj as any)[key];
     }
-    return acc;
-  }, {} as FilterByPrefix<T, Data, S>);
+  }
+  return result;
 }
 
 /**
@@ -360,18 +368,20 @@ export function toNamespace<
   Namespaces extends readonly Namespace<any, string, any, any, any, any>[]
 >(state: State, ...namespaces: Namespaces): NamespacedState<State, Namespaces> {
   let current: any = state;
-  for (let i = 0; i < namespaces.length; i++) {
-    const namespace = namespaces[i];
-    if (namespace.options?.flatten) {
+
+  for (const namespace of namespaces) {
+    const options = namespace.options;
+    if (options && options.flatten) {
       current = getUnprefixedObject(
         namespace.name,
         current,
-        namespace.options?.separator ?? '_'
+        options.separator || '_'
       );
     } else {
       current = current?.[namespace.name] ?? {};
     }
   }
+
   return current;
 }
 
@@ -389,18 +399,15 @@ export function fromNamespace<
   ...namespaces: Namespaces
 ): UnNamespacedState<State, Namespaces> {
   let current: any = state;
-  for (let i = namespaces.length - 1; i >= 0; i--) {
-    const namespace = namespaces[i];
-    if (namespace.options?.flatten) {
-      current = getPrefixedObject(
-        namespace.name,
-        current,
-        namespace.options?.separator ?? '_'
-      );
-    } else {
-      current = { [namespace.name]: current };
-    }
+
+  for (const namespace of [...namespaces].reverse()) {
+    const options = namespace.options;
+    current =
+      options && options.flatten
+        ? getPrefixedObject(namespace.name, current, options.separator || '_')
+        : { [namespace.name]: current };
   }
+
   return current;
 }
 
@@ -460,12 +467,10 @@ function getRootApi<Store extends object>(
      */
     for (const name in namespaces) {
       const namespaceApi = namespaces[name];
-      const nextNamespace = namespaceApi.namespacePath?.slice(-1)[0];
+      const nextNamespace = namespaceApi.namespacePath?.slice(-1)?.[0];
       if (!nextNamespace) throw new Error('Namespace not found');
       const currentNamespaceState = toNamespace(currentState, nextNamespace);
-      Object.assign(api._payloadByNamespace, {
-        [name]: currentNamespaceState,
-      });
+      api._payloadByNamespace[name] = currentNamespaceState;
       // break if there are not more keys to apply
       if (Object.keys(newState).length === 0) break;
 
@@ -487,20 +492,12 @@ function getRootApi<Store extends object>(
         delete newState[key];
       }
 
-      // apply the keys to the payload
-      Object.assign(
-        payload,
-        fromNamespace(api._payloadByNamespace[name], nextNamespace)
-      );
+      const namespacePayload = api._payloadByNamespace[name];
+      namespacePayload &&
+        Object.assign(payload, fromNamespace(namespacePayload, nextNamespace));
     }
 
-    originalSet(
-      {
-        ...newState,
-        ...payload,
-      },
-      replace as any
-    );
+    originalSet(Object.assign({}, newState, payload) as any, replace as any);
     delete api._payloadByNamespace;
   };
 
