@@ -260,3 +260,38 @@ describe('Utility Functions', () => {
     });
   });
 });
+
+describe('examples', () => {
+  it('should work', () => {
+    const namespaceA = createNamespace('namespaceA', () => ({
+      dataInNamespaceA: 'data',
+    }));
+
+    const namespaceB = createNamespace('namespaceB', () => ({
+      dataInNamespaceB: 'data',
+    }));
+
+    const useStore = create(
+      namespaced(
+        (namespacedState) => () => ({
+          mainData: 'data',
+          ...namespacedState,
+        }),
+        {
+          namespaces: [namespaceA, namespaceB],
+        }
+      )
+    );
+
+    const { namespaceA: useNamespaceA, namespaceB: useNamespaceB } =
+      getNamespaceHooks(useStore, namespaceA, namespaceB);
+
+    useStore.getState;
+    useStore.setState;
+
+    useNamespaceA.getState;
+    useNamespaceA.setState;
+    useNamespaceB.getState;
+    useNamespaceB.setState;
+  });
+});

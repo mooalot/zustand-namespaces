@@ -1,6 +1,15 @@
 import { produce } from 'immer';
 import { describe, expect, it } from 'vitest';
-import { create } from 'zustand';
+import {
+  create,
+  createStore,
+  Mutate,
+  StateCreator,
+  StoreApi,
+  StoreMutatorIdentifier,
+  UseBoundStore,
+  useStore,
+} from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import {
   createNamespace,
@@ -11,6 +20,7 @@ import {
   namespaced,
   toNamespace,
 } from '../src/utils';
+import { useCallback } from 'react';
 
 describe('Utility Functions', () => {
   describe('getPrefixedObject', () => {

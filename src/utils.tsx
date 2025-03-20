@@ -337,8 +337,25 @@ function getOneNamespaceHook<
   >;
   const hook = ((selector) => {
     return useStore((state) => {
-      const namespaceState = toNamespace(state, namespace);
-      return selector ? selector(namespaceState) : namespaceState;
+      if (namespace.options?.flatten) {
+        const namespacedPrefix =
+          namespace.name + (namespace.options?.separator ?? '_');
+        const proxyState = new Proxy(state, {
+          get(target, prop) {
+            const key = prop as keyof Store & string;
+            return target[(namespacedPrefix + key) as keyof Store];
+          },
+          set(target, prop, value) {
+            const key = prop as keyof Store & string;
+            target[(namespacedPrefix + key) as keyof Store] = value;
+            return true;
+          },
+        });
+        return selector ? selector(proxyState as any) : proxyState;
+      } else {
+        const namespaceState = toNamespace(state, namespace);
+        return selector ? selector(namespaceState) : namespaceState;
+      }
     });
   }) as BoundStore;
 

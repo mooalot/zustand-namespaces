@@ -1,8 +1,17 @@
 import '@testing-library/jest-dom';
 import { act, cleanup, render, screen } from '@testing-library/react';
-import React from 'react';
+import React, { useCallback } from 'react';
 import { afterEach, expect, test } from 'vitest';
-import { create } from 'zustand';
+import {
+  create,
+  createStore,
+  Mutate,
+  StateCreator,
+  StoreApi,
+  StoreMutatorIdentifier,
+  UseBoundStore,
+  useStore as useZustandStore,
+} from 'zustand';
 import { createNamespace, getNamespaceHooks, namespaced } from '../src/utils';
 import { ExtractNamespace, ExtractNamespaces } from '../src/types';
 
@@ -326,5 +335,122 @@ describe('Zustand Namespaces with Components', () => {
     expect(screen.getByTestId('subNamespace1-data')).toHaveTextContent(
       'Initial SubNamespace1 Data'
     );
+  });
+});
+
+describe('Hook reads from state', () => {
+  type CreateWithProxy = {
+    <T, Mos extends [StoreMutatorIdentifier, unknown][] = []>(
+      initializer: StateCreator<T, [], Mos>
+    ): UseBoundStore<Mutate<StoreApi<T>, Mos>>;
+    <T>(): <Mos extends [StoreMutatorIdentifier, unknown][] = []>(
+      initializer: StateCreator<T, [], Mos>
+    ) => UseBoundStore<Mutate<StoreApi<T>, Mos>>;
+  };
+  const keys = new Set<string>();
+  function createWithProxyImpl<T extends object>(fn?: () => T) {
+    if (!fn) {
+      return doStuff;
+    } else {
+      return doStuff(fn);
+    }
+
+    function doStuff(fn: () => T) {
+      const store = create(fn);
+      function hook(selector: (state: T) => any) {
+        const smartSelector = useCallback(
+          (state: T) => {
+            const proxyState = new Proxy(
+              { ...state },
+              {
+                get: (_, prop) => {
+                  const key = prop as keyof T;
+                  keys.add(key as string);
+                  return state[key];
+                },
+              }
+            );
+
+            return selector(proxyState);
+          },
+          [selector]
+        );
+
+        return useZustandStore(store, smartSelector as any);
+      }
+      return Object.assign(hook, store) as UseBoundStore<StoreApi<T>>;
+    }
+  }
+
+  const createWithProxy = createWithProxyImpl as CreateWithProxy;
+
+  const subNamespace = createNamespace(
+    'subNamespace',
+    () => ({
+      key: 'value',
+      key2: 'value2',
+      key3: 'value3',
+    }),
+    { flatten: true }
+  );
+  const namespace = createNamespace(
+    'namespace',
+    namespaced(
+      (state) => () => ({
+        key: 'value',
+        key2: 'value2',
+        key3: 'value3',
+        ...state,
+      }),
+      {
+        namespaces: [subNamespace],
+      }
+    ),
+    { flatten: true }
+  );
+  const useNamespacedStore = createWithProxy(
+    namespaced(
+      (state) => () => ({
+        key: 'value',
+        key2: 'value2',
+        key3: 'value3',
+        ...state,
+      }),
+      {
+        namespaces: [namespace],
+      }
+    )
+  );
+
+  const { namespace: useNamespaceStore } = getNamespaceHooks(
+    useNamespacedStore,
+    namespace
+  );
+  const { subNamespace: useSubNamespaceStore } = getNamespaceHooks(
+    useNamespaceStore,
+    subNamespace
+  );
+
+  const App = () => {
+    const data = useSubNamespaceStore((state) => state.key);
+    return <div>{data}</div>;
+  };
+
+  it('should read only read one key from state', () => {
+    render(<App />);
+    expect(screen.getByText('value')).toBeInTheDocument();
+    expect(keys.has('namespace_subNamespace_key')).toBeTruthy();
+    expect(keys.size).toBe(1);
+
+    // clear the keys set
+    keys.clear();
+    act(() => {
+      useSubNamespaceStore.setState({
+        key: 'new value',
+      });
+    });
+    expect(screen.getByText('new value')).toBeInTheDocument();
+    expect(keys.has('namespace_subNamespace_key')).toBeTruthy();
+    expect(keys.size).toBe(1);
   });
 });
