@@ -342,11 +342,11 @@ function getOneNamespaceHook<
           namespace.name + (namespace.options?.separator ?? '_');
         const proxyState = new Proxy(state, {
           get(target, prop) {
-            const key = prop as keyof Store & string;
+            const key = String(prop) as keyof Store & string;
             return target[(namespacedPrefix + key) as keyof Store];
           },
           set(target, prop, value) {
-            const key = prop as keyof Store & string;
+            const key = String(prop) as keyof Store & string;
             target[(namespacedPrefix + key) as keyof Store] = value;
             return true;
           },
