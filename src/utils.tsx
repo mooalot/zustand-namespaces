@@ -514,8 +514,8 @@ function getRootApi<Store extends object>(
         Object.assign(payload, fromNamespace(namespacePayload, nextNamespace));
     }
 
-    originalSet(Object.assign({}, newState, payload) as any, replace as any);
     delete api._payloadByNamespace;
+    originalSet(Object.assign({}, newState, payload) as any, replace as any);
   };
 
   return Object.assign(api, {
