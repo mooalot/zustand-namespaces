@@ -1,4 +1,4 @@
-import { StateCreator, StoreApi, UseBoundStore } from 'zustand';
+import { StateCreator, StoreApi, UseBoundStore, useStore } from 'zustand';
 import {
   CreateNamespace,
   FilterByPrefix,
@@ -10,6 +10,7 @@ import {
   UnNamespacedState,
   UseBoundNamespace,
   WithNames,
+  WithNamespaces,
 } from './types';
 
 /**
@@ -264,6 +265,42 @@ function transformCallback<State extends object>(
       };
     }
   };
+}
+
+type FlattenNamespaces<T, Prefix extends string = ''> = {
+  [K in keyof T as K extends string
+    ? Prefix extends ''
+      ? K
+      : `${Prefix}.${K}`
+    : never]: T[K] extends { namespaces: infer SubNamespaces }
+    ? FlattenNamespaces<
+        SubNamespaces,
+        K extends string ? (Prefix extends '' ? K : `${Prefix}.${K}`) : ''
+      >
+    : T[K];
+};
+
+/**
+ * This function should return all nested namespaces like this namespace1.namespace2.namespace3
+ * if you want the hook for namespace1, you would do this:
+ * const { namespace1 } = makeHooks(store);
+ *
+ * Make hooks should know the namespaces that are in the store and return them as a hook.
+ */
+export function makeHooks<
+  S,
+  Namespaces,
+  FlattenedNamespaces extends FlattenNamespaces<Namespaces>,
+  GetHook extends (
+    namespace: FlattenedNamespaces[keyof FlattenedNamespaces]
+  ) => any
+>(
+  store: { getState: () => S; namespaces: Namespaces },
+  getHook: GetHook
+): {
+  [K in keyof FlattenedNamespaces]: FlattenedNamespaces[K];
+} {
+  return '' as any;
 }
 
 export function getNamespaceHooks<

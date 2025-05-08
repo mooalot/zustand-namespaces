@@ -4,6 +4,8 @@ import {
   createNamespace,
   getNamespaceHooks,
 } from 'zustand-namespaces';
+import { makeHooks } from '../src/utils';
+import { useStoreWithEqualityFn } from 'zustand/traditional';
 
 const subNamespace = createNamespace('subNamespace', () => ({
   dataInSubNamespace: 'data',
@@ -38,13 +40,22 @@ const useStore = create(
   )
 );
 
-export const { namespaceA: useNamespaceA, namespaceB: useNamespaceB } =
-  getNamespaceHooks(useStore, namespaceA, namespaceB);
-// NOTE THAT YOU NEED TO USE THE PARENT HOOK TO GET THE SUBNAMESPACE HOOK
-export const { subNamespace: useSubNamespace } = getNamespaceHooks(
-  useNamespaceA,
-  subNamespace
+const {
+  namespaceA: useNamespaceA,
+  namespaceB: useNamespaceB,
+  'namespaceA.subNamespace': useSubNamespace,
+} = makeHooks(
+  useStore,
+  (api) => (selector: any) => useStoreWithEqualityFn(api, selector)
 );
+
+// export const { namespaceA: useNamespaceA, namespaceB: useNamespaceB } =
+//   getNamespaceHooks(useStore, namespaceA, namespaceB);
+// // NOTE THAT YOU NEED TO USE THE PARENT HOOK TO GET THE SUBNAMESPACE HOOK
+// export const { subNamespace: useSubNamespace } = getNamespaceHooks(
+//   useNamespaceA,
+//   subNamespace
+// );
 
 useStore((state) => state.namespaceA.dataInNamespaceA);
 useStore((state) => state.namespaceB.dataInNamespaceB);

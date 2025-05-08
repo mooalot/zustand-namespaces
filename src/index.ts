@@ -4,6 +4,7 @@ export {
   toNamespace,
   fromNamespace,
   getNamespaceHooks,
+  makeHooks,
 } from './utils';
 export type {
   Namespace,
