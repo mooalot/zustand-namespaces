@@ -531,4 +531,50 @@ describe('createNamespace', () => {
       namespacetestkey: string;
     }>(useNamespace.getRawState());
   });
+
+  test('should have correct namespaces on big namespaced store', () => {
+    const subNamespace = createNamespace(
+      'subNamespace',
+      () => ({
+        key: 'value',
+      }),
+      { flatten: true }
+    );
+    const namespace = createNamespace(
+      'namespace',
+      namespaced((state) => () => ({ key: 'value', ...state }), {
+        namespaces: [subNamespace],
+      }),
+      { flatten: true }
+    );
+
+    const namespace2 = createNamespace(
+      'namespace2',
+      () => ({
+        key: 'value',
+      }),
+      { flatten: true }
+    );
+
+    const useStore = create(
+      namespaced({ namespaces: [namespace, namespace2] })
+    );
+
+    expectType<{
+      getState: () => {
+        key: string;
+        subNamespace_key: string;
+      };
+    }>(useStore.namespaces.namespace);
+    expectType<{
+      getState: () => {
+        key: string;
+      };
+    }>(useStore.namespaces.namespace.namespaces.subNamespace);
+    expectType<{
+      getState: () => {
+        key: string;
+      };
+    }>(useStore.namespaces.namespace2);
+  });
 });

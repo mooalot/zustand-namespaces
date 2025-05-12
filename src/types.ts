@@ -172,7 +172,7 @@ export type MergeMs<
   S,
   Ms extends [StoreMutatorIdentifier, unknown][],
   // eslint-disable-next-line
-  Current = {}
+  Current = S
 > = Ms extends [[infer M, infer A], ...infer Rest]
   ? Rest extends [StoreMutatorIdentifier, unknown][]
     ? M extends keyof StoreMutators<S, A>
