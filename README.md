@@ -17,11 +17,7 @@ npm install zustand-namespaces
 
 ```javascript
 import { create } from 'zustand';
-import {
-  namespaced,
-  createNamespace,
-  getNamespaceHooks,
-} from 'zustand-namespaces';
+import { namespaced, createNamespace } from 'zustand-namespaces';
 
 const namespaceA = createNamespace('namespaceA', () => ({
   dataInNamespaceA: 'data',
@@ -43,9 +39,23 @@ const useStore = create(
     }
   )
 );
+```
 
-export const { namespaceA: useNamespaceA, namespaceB: useNamespaceB } =
-  getNamespaceHooks(useStore, namespaceA, namespaceB);
+## Generating Namespaced Hooks
+
+To generate global hooks for each namespace, you can create a hook factory function that takes the namespace API
+as an argument. This allows you to use each namespace's state in a more modular way.
+
+```javascript
+const hookFactory = <S extends StoreApi<any>>(api: S) => {
+  const hook: <T>(selector: (state: ExtractState<S>) => T) => T = (selector) =>
+    useTrackedStoreWithEqualityFn(api, selector, isEqual);
+  return Object.assign(hook, api);
+};
+
+const useNamespaceA = hookFactory(useStore.namespaces.namespaceA);
+
+const useNamespaceB = hookFactory(useStore.namespaces.namespaceB);
 ```
 
 ## State Structure
@@ -183,7 +193,7 @@ More examples can be found in the [examples directory](https://github.com/mooalo
 - **namespaced**: The middleware used to join namespaces.
 - **toNamespace**: Extracts a namespace's state from some parent state.
 - **fromNamespace**: Converts namespace state to some parent state.
-- **getNamespaceHooks**: Returns hooks for each namespace.
+- **getNamespaceHooks (DEPRECATED)**: Returns hooks for each namespace.
 
 ## Key Types
 
