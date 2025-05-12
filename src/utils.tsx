@@ -266,6 +266,9 @@ function transformCallback<State extends object>(
   };
 }
 
+/**
+ * @deprecated This function is deprecated and will be removed in the next major version. Create your own hooks using zustand's useStore methods on namespace apis'.
+ */
 export function getNamespaceHooks<
   S extends StoreApi<any> & { namespaces: any },
   Namespaces extends readonly Namespace<any, string, any, any, any, any>[],
